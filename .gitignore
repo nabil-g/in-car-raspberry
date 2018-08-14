@@ -2,3 +2,14 @@
 elm-stuff
 # elm-repl generated files
 repl-temp-*
+
+tmp/
+yarn.lock
+
+node_modules/
+dist/
+src/.idea/
+.idea/
+*.log
+*.swp
+*.iml
