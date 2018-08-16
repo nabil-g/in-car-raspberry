@@ -4,7 +4,7 @@ elm-stuff
 repl-temp-*
 
 tmp/
-yarn.lock
+
 
 node_modules/
 dist/

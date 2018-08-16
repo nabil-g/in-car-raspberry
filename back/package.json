@@ -7,5 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Nabil Ghedjati",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.3",
+    "music-metadata": "^2.4.3",
+    "ws": "^6.0.0"
+  }
 }
