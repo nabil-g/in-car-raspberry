@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import WebSocket
 import Json.Decode as D
-import Json.Encode as E
+import Json.Decode.Pipeline exposing (decode, required)
 
 
 -- APP
@@ -27,6 +27,13 @@ type alias Model =
 initialModel : Model
 initialModel =
     0
+
+
+
+type alias SongInfo= {
+    filename: String
+    , common: {}
+}
 
 
 socketPath : String
@@ -54,7 +61,9 @@ update msg model =
                 x =
                     Debug.log "reçu ---> " mess
             in
-                ( model, Cmd.none )
+                ( model, WebSocket.send socketPath "bien reçu!" )
+
+
 
 
 
@@ -63,11 +72,11 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions m =
-    Sub.none
+    --    Sub.none
+    WebSocket.listen socketPath NewMessage
 
 
 
---    WebSocket.listen socketPath NewMessage
 -- VIEW
 
 
