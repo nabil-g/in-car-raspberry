@@ -23,17 +23,17 @@ main =
 type alias Model =
     Int
 
+type alias TrackInfo = {
+    filename: String
+    , title: Maybe String
+    , artist: Maybe String
+    , album: Maybe String
+}
 
 initialModel : Model
 initialModel =
     0
 
-
-
-type alias SongInfo= {
-    filename: String
-    , common: {}
-}
 
 
 socketPath : String

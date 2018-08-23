@@ -3,54 +3,65 @@ const app = express();
 const mm = require('music-metadata');
 const WebSocket = require('ws');
 const fs = require('fs');
+const path = require('path');
 
-app.get('/', function (req, res) {
-    res.send('Hello World!')
-});
+let musicDir = '/home/nabil/Musique/public/';
+let workMusicDir = '/home/nabil/';
+
+const wss = new WebSocket.Server({ port: 8082 });
 
 app.listen(3000, function () {
     console.log('Example app listening on port 3000!')
 });
 
-let musicDir = '/home/nabil/Musique/public/';
 
-app.use(express.static(musicDir));
-
-
-const wss = new WebSocket.Server({ port: 8082 });
+app.use(express.static(workMusicDir));
 
 wss.on('connection', function (ws) {
-    console.log('one guy is connected !!!');
+    console.log('----------> one guy is connected !!!');
     ws.on('message', function (message) {
-        console.log('received: %s', message);
+        console.log('------> received: %s', message);
     });
 
-    // mm.parseFile('/home/nabil/Musique/public/4 Hero & Carina Anderson - Morning Child (Album Version) .mp3', {native: true})
-    mm.parseFile('/home/nabil/Musique/public/4hero.wav', {native: true})
-        .then(function (metadata) {
-            let songMd = getInfo("4hero.wav", metadata);
-            console.log(songMd);
-            ws.send(JSON.stringify(songMd));
-        })
-        .catch(function (err) {
-            console.error(err.message);});
+    // '/home/nabil/Musique/public/4 Hero & Carina Anderson - Morning Child (Album Version) .mp3'
+
+        fs.readdir(workMusicDir, function (err, files)  {
+
+            let tracksList = [];
+
+            files.filter(filterExtension).forEach(file => {
+
+                mm.parseFile(workMusicDir + file, {native: true})
+                    .then(function (metadata) {
+                        var x = getInfo(file, metadata);
+                        console.log(x);
+                        tracksList.push(x);
+                    })
+                    .catch(function (err) {
+                        console.error(err.message);
+                    });
+            });
+
+            ws.send(JSON.stringify(tracksList));
+
+            if (err) {
+                console.log(err);
+            }
+        });
+
 
 });
 
+let filterExtension = function (element) {
+    let extName = path.extname(element);
+    return extName === '.mp3';
+};
 
-fs.readdir(musicDir, function (err, files)  {
-    files.forEach(file => {
-        mm.parseFile(musicDir + file, {native: true})
-            .then(function (metadata) {
-                console.log(file);
-            })
-            .catch(function (err) {
-                console.error(err.message);});
-    });
-    if (err) {
-        console.log(err);
-    }
-});
+
+let getInfo = function (file, md ) {
+    md.common.filename = file;
+    return md.common;
+};
 
 // let readWriteFile = function (req) {
 //     let data =  new Buffer(req);
@@ -63,10 +74,3 @@ fs.readdir(musicDir, function (err, files)  {
 //         }
 //     });
 // };
-
-let getInfo = function (filen, md ) {
-    return {
-      filename : filen,
-        common: md.common,
-    };
-}
