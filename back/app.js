@@ -15,7 +15,7 @@ app.listen(3000, function () {
 });
 
 
-app.use(express.static(workMusicDir));
+app.use(express.static(musicDir));
 
 wss.on('connection', function (ws) {
     console.log('----------> one guy is connected !!!');
@@ -25,24 +25,26 @@ wss.on('connection', function (ws) {
 
     // '/home/nabil/Musique/public/4 Hero & Carina Anderson - Morning Child (Album Version) .mp3'
 
-        fs.readdir(workMusicDir, function (err, files)  {
+        fs.readdir(musicDir, function (err, files)  {
 
             let tracksList = [];
 
-            files.filter(filterExtension).forEach(file => {
+            files.filter(filterExtension).forEach((file, index, arr) => {
 
-                mm.parseFile(workMusicDir + file, {native: true})
-                    .then(function (metadata) {
-                        var x = getInfo(file, metadata);
-                        console.log(x);
+                mm.parseFile(musicDir + file, {native: true})
+                    .then(metadata => {
+                        let x = getInfo(file, metadata);
                         tracksList.push(x);
+                        if (tracksList.length === arr.length) {
+                            ws.send(JSON.stringify(tracksList));
+                        }
                     })
-                    .catch(function (err) {
+                    .catch( err => {
                         console.error(err.message);
                     });
             });
 
-            ws.send(JSON.stringify(tracksList));
+
 
             if (err) {
                 console.log(err);
@@ -60,11 +62,16 @@ let filterExtension = function (element) {
 
 let getInfo = function (file, md ) {
     md.common.filename = file;
+    // if (md.common.picture) {
+    //     readWriteFile(md.common.picture[0].data);
+    // }
+    delete md.common.picture;
     return md.common;
 };
 
 // let readWriteFile = function (req) {
 //     let data =  new Buffer(req);
+//     console.log(data.toString('base64'));
 //     fs.writeFile('fileName.jpg', data, 'binary', function (err) {
 //         if (err) {
 //             console.log("There was an error writing the image")
