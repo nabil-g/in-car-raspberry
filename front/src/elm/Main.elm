@@ -3,9 +3,9 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
-import WebSocket
 import Json.Decode as D
-import Json.Decode.Pipeline as P exposing (decode, required,optional)
+import Json.Decode.Pipeline as P exposing (decode, optional, required)
+import WebSocket
 
 
 -- APP
@@ -21,22 +21,16 @@ main =
 
 
 type alias Model =
-    Int
+    { tracksList : List String
+    }
 
 
-
---
-type alias TrackInfo = {
-    filename : String
+type alias TrackInfo =
+    { filename : String
     , title : Maybe String
     , artist : Maybe String
-    , album: Maybe String
-}
-
---resultsDecoder : D.Decoder (List TrackInfo)
---resultsDecoder =
---    decode (List TrackInfo)
---
+    , album : Maybe String
+    }
 
 
 trackDecoder : D.Decoder TrackInfo
@@ -50,7 +44,8 @@ trackDecoder =
 
 initialModel : Model
 initialModel =
-    0
+    { tracksList = []
+    }
 
 
 socketPath : String
@@ -76,9 +71,14 @@ update msg model =
         NewMessage mess ->
             let
                 x =
-                    Debug.log "reçu ---> " mess
+                    case D.decodeString (D.list D.string) mess of
+                        Ok ls ->
+                            ls
+
+                        Err ls ->
+                            []
             in
-                ( model, WebSocket.send socketPath "bien reçu!" )
+                ( { model | tracksList = x }, WebSocket.send socketPath "bien reçu!" )
 
 
 
