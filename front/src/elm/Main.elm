@@ -6,6 +6,7 @@ import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import WebSocket
+import Ports
 
 
 -- APP
@@ -22,6 +23,8 @@ main =
 
 type alias Model =
     { tracksList : List String
+    , playing : Bool
+    , currentlyPlaying : Maybe String
     }
 
 
@@ -45,6 +48,8 @@ trackDecoder =
 initialModel : Model
 initialModel =
     { tracksList = []
+    , playing = False
+    , currentlyPlaying = Nothing
     }
 
 
@@ -60,6 +65,10 @@ socketPath =
 type Msg
     = NoOp
     | NewMessage String
+    | PlayTrack String
+    | Play
+    | Pause
+    | PlayerEvent String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -67,6 +76,33 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        PlayTrack tr ->
+            ( model, Ports.playTrack tr )
+
+        Pause ->
+            ( model, Ports.pause () )
+
+        Play ->
+            ( model, Ports.play () )
+
+        PlayerEvent st ->
+            let
+                playingStatus =
+                    case st of
+                        "ended" ->
+                            False
+
+                        "playing" ->
+                            True
+
+                        "paused" ->
+                            False
+
+                        _ ->
+                            False
+            in
+                ( { model | playing = playingStatus }, Cmd.none )
 
         NewMessage mess ->
             let
@@ -78,7 +114,7 @@ update msg model =
                         Err ls ->
                             []
             in
-                ( { model | tracksList = x }, WebSocket.send socketPath "bien reçu!" )
+                ( { model | tracksList = x }, Cmd.none )
 
 
 
@@ -87,7 +123,10 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions m =
-    WebSocket.listen socketPath NewMessage
+    Sub.batch
+        [ WebSocket.listen socketPath NewMessage
+        , Ports.playerEvent PlayerEvent
+        ]
 
 
 
@@ -96,5 +135,23 @@ subscriptions m =
 
 view : Model -> Html Msg
 view model =
-    div []
-        []
+    let
+        ( buttonMsg, buttonTxt ) =
+            case model.playing of
+                False ->
+                    ( Play, "Lire" )
+
+                True ->
+                    ( Pause, "Pause" )
+    in
+        div []
+            [ ul [] (List.map viewTrack model.tracksList)
+            , button [ onClick buttonMsg ] [ text buttonTxt ]
+            ]
+
+
+viewTrack : String -> Html Msg
+viewTrack tr =
+    li []
+        [ a [ href "#", onClick <| PlayTrack tr ] [ text tr ]
+        ]

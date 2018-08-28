@@ -1,13 +1,18 @@
 port module Ports exposing (..)
 
+-- audio listeners
+
+
+port playerEvent : (String -> msg) -> Sub msg
+
+
+
 -- audio commands
 
 
 port playTrack : String -> Cmd msg
 
 
-port togglePause : Bool -> Cmd msg
+port pause : () -> Cmd msg
 
-
-
--- audio listeners
+port play : () -> Cmd msg
