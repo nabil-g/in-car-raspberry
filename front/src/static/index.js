@@ -23,9 +23,12 @@ audioPlayer.onplay = function() {
     console.log("The audio is playing");
     app.ports.playerEvent.send("playing");
 };
-
 audioPlayer.canplay = function () {
-  audioPlayer.play();
+
+    audioPlayer.play();
+};
+audioPlayer.onloadstart = function () {
+    app.ports.playerEvent.send("loading");
 };
 
 // actionners
