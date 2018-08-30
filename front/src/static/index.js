@@ -15,12 +15,12 @@ audioPlayer.onended = function() {
 };
 
 audioPlayer.onpause = function() {
-    console.log("The audio has ended");
+    console.log("The audio has been paused");
     app.ports.playerEvent.send("paused");
 };
 
 audioPlayer.onplay = function() {
-    console.log("The audio has ended");
+    console.log("The audio is playing");
     app.ports.playerEvent.send("playing");
 };
 

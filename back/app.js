@@ -5,10 +5,8 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-let workMusicDir = '/home/nabil/';
-let homeMusicDir = '/home/nabil/Musique/public/';
 
-let musicDir = homeMusicDir;
+let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 
 
 

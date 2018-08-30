@@ -108,10 +108,10 @@ if (isProd === true) {
                 filename: 'static/css/[name]-[hash].css',
                 allChunks: true,
             }),
-            new CopyWebpackPlugin([{
-                from: 'src/static/img/',
-                to: 'static/img/'
-            }]),
+            // new CopyWebpackPlugin([{
+            //     from: 'src/static/img/',
+            //     to: 'static/img/'
+            // }]),
 
             // extract CSS into a separate file
             // minify & mangle JS/CSS

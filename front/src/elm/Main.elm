@@ -5,8 +5,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
-import WebSocket
 import Ports
+import WebSocket
 
 
 -- APP
@@ -23,9 +23,16 @@ main =
 
 type alias Model =
     { tracksList : List String
-    , playing : Bool
+    , status : PlayerStatus
     , currentlyPlaying : Maybe String
     }
+
+
+type PlayerStatus
+    = Playing
+    | Paused
+    | Ended
+    | Empty
 
 
 type alias TrackInfo =
@@ -48,7 +55,7 @@ trackDecoder =
 initialModel : Model
 initialModel =
     { tracksList = []
-    , playing = False
+    , status = Empty
     , currentlyPlaying = Nothing
     }
 
@@ -63,8 +70,7 @@ socketPath =
 
 
 type Msg
-    = NoOp
-    | NewMessage String
+    = NewMessage String
     | PlayTrack String
     | Play
     | Pause
@@ -74,9 +80,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
         PlayTrack tr ->
             ( model, Ports.playTrack tr )
 
@@ -84,25 +87,34 @@ update msg model =
             ( model, Ports.pause () )
 
         Play ->
-            ( model, Ports.play () )
+            let
+                cmd =
+                    case model.status of
+                        Empty ->
+                            Cmd.none
+
+                        _ ->
+                            Ports.play ()
+            in
+            ( model, cmd )
 
         PlayerEvent st ->
             let
-                playingStatus =
+                playerStatus =
                     case st of
                         "ended" ->
-                            False
+                            Ended
 
                         "playing" ->
-                            True
+                            Playing
 
                         "paused" ->
-                            False
+                            Paused
 
                         _ ->
-                            False
+                            Empty
             in
-                ( { model | playing = playingStatus }, Cmd.none )
+            ( { model | status = playerStatus }, Cmd.none )
 
         NewMessage mess ->
             let
@@ -114,7 +126,7 @@ update msg model =
                         Err ls ->
                             []
             in
-                ( { model | tracksList = x }, Cmd.none )
+            ( { model | tracksList = x }, Cmd.none )
 
 
 
@@ -137,17 +149,17 @@ view : Model -> Html Msg
 view model =
     let
         ( buttonMsg, buttonTxt ) =
-            case model.playing of
-                False ->
-                    ( Play, "Lire" )
-
-                True ->
+            case model.status of
+                Playing ->
                     ( Pause, "Pause" )
+
+                _ ->
+                    ( Play, "Lire" )
     in
-        div []
-            [ ul [] (List.map viewTrack model.tracksList)
-            , button [ onClick buttonMsg ] [ text buttonTxt ]
-            ]
+    div []
+        [ ul [] (List.map viewTrack model.tracksList)
+        , button [ onClick buttonMsg ] [ text buttonTxt ]
+        ]
 
 
 viewTrack : String -> Html Msg
