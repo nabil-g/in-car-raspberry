@@ -1,9 +1,12 @@
 port module Ports exposing (..)
 
+import Json.Decode exposing (Value)
+
+
 -- audio listeners
 
 
-port playerEvent : (String -> msg) -> Sub msg
+port playerEvent : (Value -> msg) -> Sub msg
 
 
 

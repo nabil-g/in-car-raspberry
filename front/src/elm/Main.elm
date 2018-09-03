@@ -22,17 +22,18 @@ main =
 
 
 type alias Model =
-    { tracksList : List String
+    { tracksList : List ( Int, String )
     , status : PlayerStatus
-    , currentlyPlaying : Maybe String
     }
 
 
 type PlayerStatus
-    = Playing
-    | Paused
-    | Ended
+    = Playing String
+    | Paused String
+    | Loaded String
+    | Ended String
     | Empty
+    | Unknown
 
 
 type alias TrackInfo =
@@ -41,6 +42,24 @@ type alias TrackInfo =
     , artist : Maybe String
     , album : Maybe String
     }
+
+
+type alias PlayerStatusEvent =
+    { event : String, track : String }
+
+
+decodePlayerEvent : D.Value -> PlayerStatus
+decodePlayerEvent val =
+    let
+        playerEventDecoder =
+            P.decode PlayerStatusEvent
+                |> P.required "event" D.string
+                |> P.required "track" D.string
+
+        decodedValue =
+            D.decodeValue playerEventDecoder val
+    in
+    Unknown
 
 
 trackDecoder : D.Decoder TrackInfo
@@ -56,7 +75,6 @@ initialModel : Model
 initialModel =
     { tracksList = []
     , status = Empty
-    , currentlyPlaying = Nothing
     }
 
 
@@ -74,7 +92,7 @@ type Msg
     | PlayTrack String
     | Play
     | Pause
-    | PlayerEvent String
+    | PlayerEvent D.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -98,21 +116,10 @@ update msg model =
             in
             ( model, cmd )
 
-        PlayerEvent st ->
+        PlayerEvent value ->
             let
                 playerStatus =
-                    case st of
-                        "ended" ->
-                            Ended
-
-                        "playing" ->
-                            Playing
-
-                        "paused" ->
-                            Paused
-
-                        _ ->
-                            Empty
+                    Unknown
             in
             ( { model | status = playerStatus }, Cmd.none )
 
@@ -121,7 +128,7 @@ update msg model =
                 x =
                     case D.decodeString (D.list D.string) mess of
                         Ok ls ->
-                            ls
+                            ls |> List.indexedMap (,)
 
                         Err ls ->
                             []
@@ -150,7 +157,7 @@ view model =
     let
         ( buttonMsg, buttonTxt ) =
             case model.status of
-                Playing ->
+                Playing _ ->
                     ( Pause, "Pause" )
 
                 _ ->
@@ -162,8 +169,8 @@ view model =
         ]
 
 
-viewTrack : String -> Html Msg
-viewTrack tr =
+viewTrack : ( Int, String ) -> Html Msg
+viewTrack ( num, tr ) =
     li []
         [ a [ href "#", onClick <| PlayTrack tr ] [ text tr ]
         ]
