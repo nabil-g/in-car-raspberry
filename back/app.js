@@ -8,11 +8,11 @@ const path = require('path');
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 
-
+let serverPort = 3000;
 
 const wss = new WebSocket.Server({ port: 8082 });
 
-app.listen(3000, function () {
+app.listen(serverPort, function () {
     console.log('Example app listening on port 3000!')
 });
 

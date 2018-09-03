@@ -11,25 +11,40 @@ window.ap = audioPlayer;
 
 audioPlayer.onended = function() {
     console.log("The audio has ended");
-    app.ports.playerEvent.send("ended");
+    app.ports.playerEvent.send({
+        event: "ended",
+        track: audioPlayer.src,
+    });
 };
 
 audioPlayer.onpause = function() {
     console.log("The audio has been paused");
-    app.ports.playerEvent.send("paused");
+    app.ports.playerEvent.send({
+        event: "paused",
+        track: audioPlayer.src,
+    });
 };
 
 audioPlayer.onplay = function() {
     console.log("The audio is playing");
-    app.ports.playerEvent.send("playing");
+    app.ports.playerEvent.send({
+        event: "playing",
+        track: audioPlayer.src,
+    });
 };
-audioPlayer.canplay = function () {
 
-    audioPlayer.play();
+
+
+audioPlayer.oncanplaythrough = function () {
+    console.log("can play");
+    app.ports.playerEvent.send({
+        event: "loaded",
+        track: audioPlayer.src,
+    });
 };
-audioPlayer.onloadstart = function () {
-    app.ports.playerEvent.send("loading");
-};
+
+
+
 
 // actionners
 
