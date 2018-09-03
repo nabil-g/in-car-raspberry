@@ -13,7 +13,7 @@ port playerEvent : (Value -> msg) -> Sub msg
 -- audio commands
 
 
-port playTrack : String -> Cmd msg
+port setTrack : String -> Cmd msg
 
 
 port pause : () -> Cmd msg

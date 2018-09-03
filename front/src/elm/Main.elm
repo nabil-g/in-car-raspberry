@@ -3,6 +3,7 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
+import Html.Keyed as HK
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
@@ -28,24 +29,23 @@ type alias Model =
 
 
 type PlayerStatus
-    = Playing String
-    | Paused String
-    | Loaded String
-    | Ended String
+    = Playing TrackData
+    | Paused TrackData
+    | Loaded TrackData
+    | Ended TrackData
     | Empty
     | Unknown
 
 
-type alias TrackInfo =
-    { filename : String
-    , title : Maybe String
-    , artist : Maybe String
-    , album : Maybe String
+type alias TrackData =
+    { track : String
     }
 
 
 type alias PlayerStatusEvent =
-    { event : String, track : String }
+    { event : String
+    , track : String
+    }
 
 
 decodePlayerEvent : D.Value -> PlayerStatus
@@ -56,19 +56,42 @@ decodePlayerEvent val =
                 |> P.required "event" D.string
                 |> P.required "track" D.string
 
-        decodedValue =
-            D.decodeValue playerEventDecoder val
+        playerEventToStatus pse =
+            case pse.event of
+                "ended" ->
+                    Ended <| TrackData pse.track
+
+                "paused" ->
+                    Paused <| TrackData pse.track
+
+                "playing" ->
+                    Playing <| TrackData pse.track
+
+                "loaded" ->
+                    Loaded <| TrackData pse.track
+
+                _ ->
+                    Empty
     in
-    Unknown
+    D.decodeValue playerEventDecoder val
+        |> Result.map playerEventToStatus
+        |> Result.withDefault Unknown
 
 
-trackDecoder : D.Decoder TrackInfo
-trackDecoder =
-    decode TrackInfo
-        |> P.required "filename" D.string
-        |> optional "title" (D.nullable D.string) Nothing
-        |> optional "artist" (D.nullable D.string) Nothing
-        |> optional "album" (D.nullable D.string) Nothing
+
+--type alias TrackInfo =
+--    { filename : String
+--    , title : Maybe String
+--    , artist : Maybe String
+--    , album : Maybe String
+--    }
+--trackDecoder : D.Decoder TrackInfo
+--trackDecoder =
+--    decode TrackInfo
+--        |> P.required "filename" D.string
+--        |> optional "title" (D.nullable D.string) Nothing
+--        |> optional "artist" (D.nullable D.string) Nothing
+--        |> optional "album" (D.nullable D.string) Nothing
 
 
 initialModel : Model
@@ -89,39 +112,96 @@ socketPath =
 
 type Msg
     = NewMessage String
-    | PlayTrack String
+    | SetTrack String
     | Play
     | Pause
+    | Previous
+    | Next
     | PlayerEvent D.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PlayTrack tr ->
-            ( model, Ports.playTrack tr )
+        SetTrack tr ->
+            ( model, Ports.setTrack tr )
 
         Pause ->
             ( model, Ports.pause () )
+
+        Previous ->
+            case model.status of
+                Playing tr ->
+                    let
+                        cmd =
+                            case model.tracksList of
+                                [] ->
+                                    Cmd.none
+
+                                _ ->
+                                    model.tracksList
+                                        |> getTrackIndex tr.track
+                                        |> getAnotherTrack -1 model.tracksList
+                                        |> Ports.setTrack
+                    in
+                    ( model, cmd )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        Next ->
+            case model.status of
+                Playing tr ->
+                    let
+                        cmd =
+                            case model.tracksList of
+                                [] ->
+                                    Cmd.none
+
+                                _ ->
+                                    model.tracksList
+                                        |> getTrackIndex tr.track
+                                        |> getAnotherTrack 1 model.tracksList
+                                        |> Ports.setTrack
+                    in
+                    ( model, cmd )
+
+                _ ->
+                    ( model, Cmd.none )
 
         Play ->
             let
                 cmd =
                     case model.status of
                         Empty ->
-                            Cmd.none
+                            if model.tracksList == [] then
+                                Cmd.none
+                            else
+                                model.tracksList
+                                    |> List.head
+                                    |> Maybe.withDefault ( 0, "" )
+                                    |> Tuple.second
+                                    |> Ports.setTrack
 
                         _ ->
                             Ports.play ()
             in
             ( model, cmd )
 
-        PlayerEvent value ->
+        PlayerEvent pe ->
             let
                 playerStatus =
-                    Unknown
+                    decodePlayerEvent pe
+
+                cmd =
+                    case playerStatus of
+                        Loaded tr ->
+                            Ports.play ()
+
+                        _ ->
+                            Cmd.none
             in
-            ( { model | status = playerStatus }, Cmd.none )
+            ( { model | status = playerStatus }, cmd )
 
         NewMessage mess ->
             let
@@ -134,6 +214,27 @@ update msg model =
                             []
             in
             ( { model | tracksList = x }, Cmd.none )
+
+
+getTrackIndex : String -> List ( Int, String ) -> Int
+getTrackIndex st ls =
+    List.filter (\tup -> Tuple.second tup == st) ls
+        |> List.map (\tup -> Tuple.first tup)
+        |> List.head
+        |> Maybe.withDefault 0
+
+
+getAnotherTrack : Int -> List ( Int, String ) -> Int -> String
+getAnotherTrack direction ls curindex =
+    let
+        nextTrackIndex =
+            (curindex + direction) % List.length ls
+    in
+    ls
+        |> List.filter (\tup -> Tuple.first tup == nextTrackIndex)
+        |> List.map (\tup -> Tuple.second tup)
+        |> List.head
+        |> Maybe.withDefault ""
 
 
 
@@ -154,23 +255,53 @@ subscriptions m =
 
 view : Model -> Html Msg
 view model =
+    div []
+        [ HK.ul []
+            (List.map viewTrack model.tracksList)
+        , viewPlayerToolbar model
+        ]
+
+
+viewPlayerToolbar : Model -> Html Msg
+viewPlayerToolbar model =
     let
+        status =
+            case model.status of
+                Playing tr ->
+                    p [] [ text tr.track ]
+
+                Paused tr ->
+                    p [] [ text tr.track ]
+
+                Loaded tr ->
+                    p [] [ text tr.track ]
+
+                Ended tr ->
+                    p [] [ text tr.track ]
+
+                _ ->
+                    text ""
+
         ( buttonMsg, buttonTxt ) =
             case model.status of
-                Playing _ ->
+                Playing tr ->
                     ( Pause, "Pause" )
 
                 _ ->
                     ( Play, "Lire" )
     in
     div []
-        [ ul [] (List.map viewTrack model.tracksList)
+        [ button [ onClick Next ] [ text "Prev" ]
         , button [ onClick buttonMsg ] [ text buttonTxt ]
+        , button [ onClick Previous ] [ text "Suiv" ]
+        , status
         ]
 
 
-viewTrack : ( Int, String ) -> Html Msg
+viewTrack : ( Int, String ) -> ( String, Html Msg )
 viewTrack ( num, tr ) =
-    li []
-        [ a [ href "#", onClick <| PlayTrack tr ] [ text tr ]
+    ( toString num
+    , li []
+        [ a [ href "#", onClick <| SetTrack tr ] [ text tr ]
         ]
+    )

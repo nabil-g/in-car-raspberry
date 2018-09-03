@@ -35,7 +35,7 @@ audioPlayer.onplay = function() {
 
 
 
-audioPlayer.oncanplaythrough = function () {
+audioPlayer.ondurationchange = function () {
     console.log("can play");
     app.ports.playerEvent.send({
         event: "loaded",
@@ -48,7 +48,7 @@ audioPlayer.oncanplaythrough = function () {
 
 // actionners
 
-app.ports.playTrack.subscribe(function (tr) {
+app.ports.setTrack.subscribe(function (tr) {
     // console.log(tr);
     audioPlayer.src = 'http://localhost:3000/' + tr;
     console.log(audioPlayer.src);
