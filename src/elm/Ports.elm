@@ -1,4 +1,4 @@
-port module Ports exposing (incomingSocketMsg, pause, play, playerEvent, setTrack)
+port module Ports exposing (incomingSocketMsg, pause, play, playerEvent, setTrack, timeUpdate)
 
 import Json.Decode exposing (Value)
 
@@ -8,6 +8,9 @@ import Json.Decode exposing (Value)
 
 
 port playerEvent : (Value -> msg) -> Sub msg
+
+
+port timeUpdate : (Float -> msg) -> Sub msg
 
 
 port incomingSocketMsg : (String -> msg) -> Sub msg

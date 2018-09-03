@@ -46,6 +46,9 @@ audioPlayer.ondurationchange = function () {
     });
 };
 
+audioPlayer.ontimeupdate = function () {
+    app.ports.timeUpdate.send(audioPlayer.currentTime);
+};
 
 audioPlayer.onerror = function () {
     myDebug("error");
@@ -57,7 +60,9 @@ audioPlayer.onerror = function () {
     });
 };
 
-
+audioPlayer.ontimeupdate = function () {
+    app.ports.timeUpdate.send(audioPlayer.currentTime);
+};
 // actionners
 
 app.ports.setTrack.subscribe(function (tr) {

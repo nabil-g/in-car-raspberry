@@ -27,6 +27,7 @@ type Msg
     | Search String
     | UrlChanged Url.Url
     | LinkClicked Browser.UrlRequest
+    | TimeUpdate Float
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -206,6 +207,14 @@ update msg model =
             { clock | timezone = zone }
                 |> (\c -> ( { model | clock = c }, Cmd.none ))
 
+        TimeUpdate time ->
+            let
+                updatedPlayer =
+                    model.player
+                        |> (\player -> { player | currentTime = round <| time })
+            in
+            ( { model | player = updatedPlayer }, Cmd.none )
+
 
 getCurrentTrack : PlayerStatus -> Maybe PlayingPath
 getCurrentTrack ps =
@@ -314,4 +323,5 @@ subscriptions m =
         [ Ports.incomingSocketMsg IncomingSocketMsg
         , Ports.playerEvent PlayerEvent
         , Time.every 60000 Tick
+        , Ports.timeUpdate TimeUpdate
         ]

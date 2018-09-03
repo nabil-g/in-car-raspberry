@@ -20,6 +20,7 @@ type alias Player =
     , loop : Bool
     , shuffle : Randomness
     , search : String
+    , currentTime : Int
     }
 
 
@@ -150,6 +151,7 @@ initialModel url key =
         , loop = False
         , shuffle = Disabled
         , search = ""
+        , currentTime = 0
         }
     }
 
