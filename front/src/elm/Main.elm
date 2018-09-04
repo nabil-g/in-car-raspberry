@@ -111,7 +111,7 @@ socketPath =
 
 
 type Msg
-    = NewMessage String
+    = IncomingSocketMsg String
     | SetTrack String
     | Play
     | Pause
@@ -130,43 +130,27 @@ update msg model =
             ( model, Ports.pause () )
 
         Previous ->
-            case model.status of
-                Playing tr ->
+            case getCurrentTrack model.status of
+                Just tr ->
                     let
                         cmd =
-                            case model.tracksList of
-                                [] ->
-                                    Cmd.none
-
-                                _ ->
-                                    model.tracksList
-                                        |> getTrackIndex tr.track
-                                        |> getAnotherTrack -1 model.tracksList
-                                        |> Ports.setTrack
+                            setAnotherTrack model.tracksList -1 tr.track
                     in
                     ( model, cmd )
 
-                _ ->
+                Nothing ->
                     ( model, Cmd.none )
 
         Next ->
-            case model.status of
-                Playing tr ->
+            case getCurrentTrack model.status of
+                Just tr ->
                     let
                         cmd =
-                            case model.tracksList of
-                                [] ->
-                                    Cmd.none
-
-                                _ ->
-                                    model.tracksList
-                                        |> getTrackIndex tr.track
-                                        |> getAnotherTrack 1 model.tracksList
-                                        |> Ports.setTrack
+                            setAnotherTrack model.tracksList 1 tr.track
                     in
                     ( model, cmd )
 
-                _ ->
+                Nothing ->
                     ( model, Cmd.none )
 
         Play ->
@@ -203,7 +187,7 @@ update msg model =
             in
             ( { model | status = playerStatus }, cmd )
 
-        NewMessage mess ->
+        IncomingSocketMsg mess ->
             let
                 x =
                     case D.decodeString (D.list D.string) mess of
@@ -216,17 +200,44 @@ update msg model =
             ( { model | tracksList = x }, Cmd.none )
 
 
-getTrackIndex : String -> List ( Int, String ) -> Int
-getTrackIndex st ls =
-    List.filter (\tup -> Tuple.second tup == st) ls
-        |> List.map (\tup -> Tuple.first tup)
-        |> List.head
-        |> Maybe.withDefault 0
+getCurrentTrack : PlayerStatus -> Maybe TrackData
+getCurrentTrack ps =
+    case ps of
+        Playing tr ->
+            Just tr
+
+        Paused tr ->
+            Just tr
+
+        Loaded tr ->
+            Just tr
+
+        Ended tr ->
+            Just tr
+
+        _ ->
+            Nothing
 
 
-getAnotherTrack : Int -> List ( Int, String ) -> Int -> String
-getAnotherTrack direction ls curindex =
+setAnotherTrack : List ( Int, String ) -> Int -> String -> Cmd Msg
+setAnotherTrack ls direction tr =
+    if List.length ls > 1 then
+        ls
+            |> getAnotherTrack tr direction
+            |> Ports.setTrack
+    else
+        Cmd.none
+
+
+getAnotherTrack : String -> Int -> List ( Int, String ) -> String
+getAnotherTrack tr direction ls =
     let
+        curindex =
+            List.filter (\tup -> Tuple.second tup == tr) ls
+                |> List.map (\tup -> Tuple.first tup)
+                |> List.head
+                |> Maybe.withDefault 0
+
         nextTrackIndex =
             (curindex + direction) % List.length ls
     in
@@ -244,7 +255,7 @@ getAnotherTrack direction ls curindex =
 subscriptions : Model -> Sub Msg
 subscriptions m =
     Sub.batch
-        [ WebSocket.listen socketPath NewMessage
+        [ WebSocket.listen socketPath IncomingSocketMsg
         , Ports.playerEvent PlayerEvent
         ]
 
