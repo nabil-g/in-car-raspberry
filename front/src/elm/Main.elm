@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Html.Keyed as HK
+import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
@@ -224,6 +225,7 @@ setAnotherTrack ls direction tr =
     if List.length ls > 1 then
         ls
             |> getAnotherTrack tr direction
+            |> Debug.log "new track is : "
             |> Ports.setTrack
     else
         Cmd.none
@@ -232,8 +234,11 @@ setAnotherTrack ls direction tr =
 getAnotherTrack : String -> Int -> List ( Int, String ) -> String
 getAnotherTrack tr direction ls =
     let
+        parsedTr =
+            Maybe.withDefault "" <| parseCurrentTrack tr
+
         curindex =
-            List.filter (\tup -> Tuple.second tup == tr) ls
+            List.filter (\tup -> Tuple.second tup == parsedTr) ls
                 |> List.map (\tup -> Tuple.first tup)
                 |> List.head
                 |> Maybe.withDefault 0
@@ -246,6 +251,13 @@ getAnotherTrack tr direction ls =
         |> List.map (\tup -> Tuple.second tup)
         |> List.head
         |> Maybe.withDefault ""
+
+
+parseCurrentTrack : String -> Maybe String
+parseCurrentTrack tr =
+    tr
+        |> String.dropLeft 22
+        |> decodeUri
 
 
 
@@ -273,24 +285,24 @@ view model =
         ]
 
 
+viewTrack : ( Int, String ) -> ( String, Html Msg )
+viewTrack ( num, tr ) =
+    ( toString num
+    , li []
+        [ a [ href "#", onClick <| SetTrack tr ] [ text tr ]
+        ]
+    )
+
+
 viewPlayerToolbar : Model -> Html Msg
 viewPlayerToolbar model =
     let
         status =
-            case model.status of
-                Playing tr ->
-                    p [] [ text tr.track ]
+            case getCurrentTrack model.status of
+                Just tr ->
+                    p [] [ text <| Maybe.withDefault "Erreur de nom" <| parseCurrentTrack tr.track ]
 
-                Paused tr ->
-                    p [] [ text tr.track ]
-
-                Loaded tr ->
-                    p [] [ text tr.track ]
-
-                Ended tr ->
-                    p [] [ text tr.track ]
-
-                _ ->
+                Nothing ->
                     text ""
 
         ( buttonMsg, buttonTxt ) =
@@ -307,12 +319,3 @@ viewPlayerToolbar model =
         , button [ onClick Previous ] [ text "Suiv" ]
         , status
         ]
-
-
-viewTrack : ( Int, String ) -> ( String, Html Msg )
-viewTrack ( num, tr ) =
-    ( toString num
-    , li []
-        [ a [ href "#", onClick <| SetTrack tr ] [ text tr ]
-        ]
-    )
