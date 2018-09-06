@@ -314,8 +314,8 @@ viewPlayerToolbar model =
                     ( Play, "Lire" )
     in
     div []
-        [ button [ onClick Next ] [ text "Prev" ]
+        [ button [ onClick Previous ] [ text "Prev" ]
         , button [ onClick buttonMsg ] [ text buttonTxt ]
-        , button [ onClick Previous ] [ text "Suiv" ]
+        , button [ onClick Next ] [ text "Suiv" ]
         , status
         ]
