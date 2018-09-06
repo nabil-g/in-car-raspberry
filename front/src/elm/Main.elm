@@ -183,6 +183,12 @@ update msg model =
                         Loaded tr ->
                             Ports.play ()
 
+                        Ended tr ->
+                            if model.tracksList /= [] then
+                                setAnotherTrack model.tracksList 1 tr.track
+                            else
+                                Cmd.none
+
                         _ ->
                             Cmd.none
             in
