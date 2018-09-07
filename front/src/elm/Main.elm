@@ -8,6 +8,7 @@ import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
+import Time exposing (Time, every, minute)
 import WebSocket
 
 
@@ -26,6 +27,7 @@ main =
 type alias Model =
     { tracksList : List ( Int, String )
     , status : PlayerStatus
+    , clock : Time
     }
 
 
@@ -99,6 +101,7 @@ initialModel : Model
 initialModel =
     { tracksList = []
     , status = Empty
+    , clock = 0
     }
 
 
@@ -119,6 +122,7 @@ type Msg
     | Previous
     | Next
     | PlayerEvent D.Value
+    | Tick Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -206,6 +210,9 @@ update msg model =
             in
             ( { model | tracksList = x }, Cmd.none )
 
+        Tick time ->
+            ( { model | clock = time }, Cmd.none )
+
 
 getCurrentTrack : PlayerStatus -> Maybe TrackData
 getCurrentTrack ps =
@@ -275,6 +282,7 @@ subscriptions m =
     Sub.batch
         [ WebSocket.listen socketPath IncomingSocketMsg
         , Ports.playerEvent PlayerEvent
+        , every minute Tick
         ]
 
 
