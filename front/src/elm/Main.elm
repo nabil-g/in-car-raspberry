@@ -8,7 +8,9 @@ import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
-import Time exposing (Time, every, minute)
+import Task
+import Time exposing (Time, every, inHours, inMinutes, minute, now)
+import Time.Format exposing (format)
 import WebSocket
 
 
@@ -17,7 +19,7 @@ import WebSocket
 
 main : Program Never Model Msg
 main =
-    Html.program { init = ( initialModel, Cmd.none ), view = view, update = update, subscriptions = subscriptions }
+    Html.program { init = ( initialModel, Task.perform Tick now ), view = view, update = update, subscriptions = subscriptions }
 
 
 
@@ -296,6 +298,11 @@ view model =
         [ HK.ul []
             (List.map viewTrack model.tracksList)
         , viewPlayerToolbar model
+        , div []
+            [ text <| format "%H" model.clock
+            , text <| ":"
+            , text <| format "%M" model.clock
+            ]
         ]
 
 
