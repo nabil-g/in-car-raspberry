@@ -44,6 +44,15 @@ audioPlayer.ondurationchange = function () {
 };
 
 
+audioPlayer.onerror = function () {
+    console.log("error");
+    console.log(audioPlayer.error.code);
+    app.ports.playerEvent.send({
+        event: "error",
+        track: audioPlayer.src,
+        error: audioPlayer.error.code,
+    });
+};
 
 
 // actionners
