@@ -8,6 +8,9 @@ import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
+import Task
+import Time exposing (Time, every, inHours, inMinutes, minute, now)
+import Time.Format exposing (format)
 import WebSocket
 
 
@@ -16,7 +19,7 @@ import WebSocket
 
 main : Program Never Model Msg
 main =
-    Html.program { init = ( initialModel, Cmd.none ), view = view, update = update, subscriptions = subscriptions }
+    Html.program { init = ( initialModel, Task.perform Tick now ), view = view, update = update, subscriptions = subscriptions }
 
 
 
@@ -26,6 +29,7 @@ main =
 type alias Model =
     { tracksList : List ( Int, String )
     , status : PlayerStatus
+    , clock : Time
     }
 
 
@@ -99,6 +103,7 @@ initialModel : Model
 initialModel =
     { tracksList = []
     , status = Empty
+    , clock = 0
     }
 
 
@@ -119,6 +124,7 @@ type Msg
     | Previous
     | Next
     | PlayerEvent D.Value
+    | Tick Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -206,6 +212,9 @@ update msg model =
             in
             ( { model | tracksList = x }, Cmd.none )
 
+        Tick time ->
+            ( { model | clock = time }, Cmd.none )
+
 
 getCurrentTrack : PlayerStatus -> Maybe TrackData
 getCurrentTrack ps =
@@ -275,6 +284,7 @@ subscriptions m =
     Sub.batch
         [ WebSocket.listen socketPath IncomingSocketMsg
         , Ports.playerEvent PlayerEvent
+        , every minute Tick
         ]
 
 
@@ -288,6 +298,11 @@ view model =
         [ HK.ul []
             (List.map viewTrack model.tracksList)
         , viewPlayerToolbar model
+        , div []
+            [ text <| format "%H" model.clock
+            , text <| ":"
+            , text <| format "%M" model.clock
+            ]
         ]
 
 
