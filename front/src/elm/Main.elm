@@ -30,6 +30,7 @@ type alias Model =
     { tracksList : List ( Int, String )
     , status : PlayerStatus
     , clock : Time
+    , loop : Bool
     }
 
 
@@ -38,6 +39,7 @@ type PlayerStatus
     | Paused TrackData
     | Loaded TrackData
     | Ended TrackData
+    | Error Int
     | Empty
     | Unknown
 
@@ -50,6 +52,7 @@ type alias TrackData =
 type alias PlayerStatusEvent =
     { event : String
     , track : String
+    , error : Maybe Int
     }
 
 
@@ -60,6 +63,7 @@ decodePlayerEvent val =
             P.decode PlayerStatusEvent
                 |> P.required "event" D.string
                 |> P.required "track" D.string
+                |> P.optional "error " (D.nullable D.int) Nothing
 
         playerEventToStatus pse =
             case pse.event of
@@ -74,6 +78,9 @@ decodePlayerEvent val =
 
                 "loaded" ->
                     Loaded <| TrackData pse.track
+
+                "error" ->
+                    Error <| Maybe.withDefault 0 <| pse.error
 
                 _ ->
                     Empty
@@ -104,6 +111,7 @@ initialModel =
     { tracksList = []
     , status = Empty
     , clock = 0
+    , loop = False
     }
 
 
@@ -125,11 +133,15 @@ type Msg
     | Next
     | PlayerEvent D.Value
     | Tick Time
+    | ToggleLoop Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ToggleLoop b ->
+            ( { model | loop = b }, Cmd.none )
+
         SetTrack tr ->
             ( model, Ports.setTrack tr )
 
@@ -165,14 +177,10 @@ update msg model =
                 cmd =
                     case model.status of
                         Empty ->
-                            if model.tracksList == [] then
-                                Cmd.none
-                            else
-                                model.tracksList
-                                    |> List.head
-                                    |> Maybe.withDefault ( 0, "" )
-                                    |> Tuple.second
-                                    |> Ports.setTrack
+                            setTheFirstTrack model
+
+                        Error int ->
+                            Cmd.none
 
                         _ ->
                             Ports.play ()
@@ -191,7 +199,10 @@ update msg model =
 
                         Ended tr ->
                             if model.tracksList /= [] then
-                                setAnotherTrack model.tracksList 1 tr.track
+                                if model.loop then
+                                    setAnotherTrack model.tracksList 0 tr.track
+                                else
+                                    setAnotherTrack model.tracksList 1 tr.track
                             else
                                 Cmd.none
 
@@ -268,6 +279,18 @@ getAnotherTrack tr direction ls =
         |> Maybe.withDefault ""
 
 
+setTheFirstTrack : Model -> Cmd Msg
+setTheFirstTrack model =
+    if model.tracksList == [] then
+        Cmd.none
+    else
+        model.tracksList
+            |> List.head
+            |> Maybe.withDefault ( 0, "" )
+            |> Tuple.second
+            |> Ports.setTrack
+
+
 parseCurrentTrack : String -> Maybe String
 parseCurrentTrack tr =
     tr
@@ -333,10 +356,24 @@ viewPlayerToolbar model =
 
                 _ ->
                     ( Play, "Lire" )
+
+        disableOnError =
+            case model.status of
+                Error _ ->
+                    True
+
+                _ ->
+                    False
     in
     div []
-        [ button [ onClick Previous ] [ text "Prev" ]
-        , button [ onClick buttonMsg ] [ text buttonTxt ]
-        , button [ onClick Next ] [ text "Suiv" ]
+        [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
+        , button [ onClick buttonMsg, disabled disableOnError ] [ text buttonTxt ]
+        , button [ onClick Next, disabled disableOnError ] [ text "Suiv" ]
+        , button [ onClick <| ToggleLoop <| not model.loop, disabled disableOnError, style [ ( "margin-left", "10px" ) ] ]
+            [ if model.loop then
+                text "Désactiver la répétition"
+              else
+                text "Activer la répétition"
+            ]
         , status
         ]
