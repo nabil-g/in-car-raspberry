@@ -5,7 +5,6 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 
 let serverPort = 3000;
@@ -23,53 +22,49 @@ wss.on('connection', function (ws) {
 
     console.log('----------> one guy is connected !!!');
 
-    // ws.on('message', function (message) {
-    //     console.log('------> received: %s', message);
-    // });
+    fs.readdir(musicDir, function (err, files)  {
+        let tracksList = [];
 
+        files.filter(filterExtension).forEach((file, index, arr) => {
 
-        fs.readdir(musicDir, function (err, files)  {
-
-            let tracksList = [];
-
-            files.filter(filterExtension).forEach((file, index, arr) => {
-                tracksList.push(file);
-                // mm.parseFile(musicDir + file, {native: true})
-                //     .then(metadata => {
-                //         let x = getInfo(file, metadata);
-                //         tracksList.push(x);
-                //         if (tracksList.length === arr.length) {
-                //             ws.send(JSON.stringify(tracksList));
-                //         }
-                //     })
-                //     .catch( err => {
-                //         console.error(err.message);
-                //     });
-            });
-            ws.send(JSON.stringify(tracksList));
-
-
-
-            if (err) {
-                console.log(err);
-            }
+            // tracksList.push(file);
+            mm.parseFile(musicDir + '/' + file, {native: true})
+                .then(metadata => {
+                    let augmentedTrack = getInfo(file, metadata);
+                    tracksList.push(augmentedTrack);
+                    if (tracksList.length === arr.length) {
+                        ws.send(JSON.stringify(tracksList));
+                        // console.log(tracksList);
+                    }
+                })
+                .catch( err => {
+                    console.error(err.message);
+                });
         });
+        // ws.send(JSON.stringify(tracksList));
+        // console.log(tracksList);
 
-
+        if (err) {
+            console.log(err);
+        }
+    });
 });
+
+
 
 let filterExtension = function (element) {
     let extName = path.extname(element);
-    return extName === '.mp3' || extName === '.wav' || extName === '.ogg' ;
+    let exluded = element.startsWith('#');
+    return (extName === '.mp3' || extName === '.wav' || extName === '.ogg') && !exluded ;
 };
 
 
 let getInfo = function (file, md ) {
-    md.common.filename = file;
-    // if (md.common.picture) {
-    //    md.common.picture = artworkToBase64(md.common.picture[0].data);
-    // }
-    delete md.common.picture;
+    md.common.relativePath = file;
+    md.common.filename = path.basename(file);
+    if (md.common.picture) {
+       md.common.picture = artworkToBase64(md.common.picture[0].data);
+    }
     return md.common;
 };
 

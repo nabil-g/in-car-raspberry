@@ -27,7 +27,7 @@ main =
 
 
 type alias Model =
-    { tracksList : List ( Int, String )
+    { tracksList : List ( Int, TrackInfo )
     , status : PlayerStatus
     , clock : Time
     , loop : Bool
@@ -35,18 +35,17 @@ type alias Model =
 
 
 type PlayerStatus
-    = Playing TrackData
-    | Paused TrackData
-    | Loaded TrackData
-    | Ended TrackData
+    = Playing PlayingPath
+    | Paused PlayingPath
+    | Loaded PlayingPath
+    | Ended PlayingPath
     | Error Int
     | Empty
     | Unknown
 
 
-type alias TrackData =
-    { track : String
-    }
+type alias PlayingPath =
+    String
 
 
 type alias PlayerStatusEvent =
@@ -68,16 +67,16 @@ decodePlayerEvent val =
         playerEventToStatus pse =
             case pse.event of
                 "ended" ->
-                    Ended <| TrackData pse.track
+                    Ended pse.track
 
                 "paused" ->
-                    Paused <| TrackData pse.track
+                    Paused pse.track
 
                 "playing" ->
-                    Playing <| TrackData pse.track
+                    Playing pse.track
 
                 "loaded" ->
-                    Loaded <| TrackData pse.track
+                    Loaded pse.track
 
                 "error" ->
                     Error <| Maybe.withDefault 0 <| pse.error
@@ -90,20 +89,40 @@ decodePlayerEvent val =
         |> Result.withDefault Unknown
 
 
+type alias TrackInfo =
+    { relativePath : String
+    , filename : String
+    , title : Maybe String
+    , artist : Maybe String
+    , album : Maybe String
+    , picture : Maybe Base64
+    }
 
---type alias TrackInfo =
---    { filename : String
---    , title : Maybe String
---    , artist : Maybe String
---    , album : Maybe String
---    }
---trackDecoder : D.Decoder TrackInfo
---trackDecoder =
---    decode TrackInfo
---        |> P.required "filename" D.string
---        |> optional "title" (D.nullable D.string) Nothing
---        |> optional "artist" (D.nullable D.string) Nothing
---        |> optional "album" (D.nullable D.string) Nothing
+
+initTrackInfo : TrackInfo
+initTrackInfo =
+    { relativePath = ""
+    , filename = ""
+    , title = Nothing
+    , artist = Nothing
+    , album = Nothing
+    , picture = Nothing
+    }
+
+
+type alias Base64 =
+    String
+
+
+trackDecoder : D.Decoder TrackInfo
+trackDecoder =
+    decode TrackInfo
+        |> P.required "relativePath" D.string
+        |> P.required "filename" D.string
+        |> optional "title" (D.nullable D.string) Nothing
+        |> optional "artist" (D.nullable D.string) Nothing
+        |> optional "album" (D.nullable D.string) Nothing
+        |> optional "picture" (D.nullable D.string) Nothing
 
 
 initialModel : Model
@@ -153,7 +172,7 @@ update msg model =
                 Just tr ->
                     let
                         cmd =
-                            setAnotherTrack model.tracksList -1 tr.track
+                            setAnotherTrack model.tracksList -1 tr
                     in
                     ( model, cmd )
 
@@ -165,7 +184,7 @@ update msg model =
                 Just tr ->
                     let
                         cmd =
-                            setAnotherTrack model.tracksList 1 tr.track
+                            setAnotherTrack model.tracksList 1 tr
                     in
                     ( model, cmd )
 
@@ -200,9 +219,9 @@ update msg model =
                         Ended tr ->
                             if model.tracksList /= [] then
                                 if model.loop then
-                                    setAnotherTrack model.tracksList 0 tr.track
+                                    setAnotherTrack model.tracksList 0 tr
                                 else
-                                    setAnotherTrack model.tracksList 1 tr.track
+                                    setAnotherTrack model.tracksList 1 tr
                             else
                                 Cmd.none
 
@@ -214,7 +233,7 @@ update msg model =
         IncomingSocketMsg mess ->
             let
                 x =
-                    case D.decodeString (D.list D.string) mess of
+                    case D.decodeString (D.list trackDecoder) mess of
                         Ok ls ->
                             ls |> List.indexedMap (,)
 
@@ -227,7 +246,7 @@ update msg model =
             ( { model | clock = time }, Cmd.none )
 
 
-getCurrentTrack : PlayerStatus -> Maybe TrackData
+getCurrentTrack : PlayerStatus -> Maybe PlayingPath
 getCurrentTrack ps =
     case ps of
         Playing tr ->
@@ -246,7 +265,7 @@ getCurrentTrack ps =
             Nothing
 
 
-setAnotherTrack : List ( Int, String ) -> Int -> String -> Cmd Msg
+setAnotherTrack : List ( Int, TrackInfo ) -> Int -> String -> Cmd Msg
 setAnotherTrack ls direction tr =
     if List.length ls > 1 then
         ls
@@ -257,14 +276,14 @@ setAnotherTrack ls direction tr =
         Cmd.none
 
 
-getAnotherTrack : String -> Int -> List ( Int, String ) -> String
+getAnotherTrack : String -> Int -> List ( Int, TrackInfo ) -> String
 getAnotherTrack tr direction ls =
     let
         parsedTr =
             Maybe.withDefault "" <| parseCurrentTrack tr
 
         curindex =
-            List.filter (\tup -> Tuple.second tup == parsedTr) ls
+            List.filter (\tup -> .relativePath (Tuple.second tup) == parsedTr) ls
                 |> List.map (\tup -> Tuple.first tup)
                 |> List.head
                 |> Maybe.withDefault 0
@@ -276,7 +295,8 @@ getAnotherTrack tr direction ls =
         |> List.filter (\tup -> Tuple.first tup == nextTrackIndex)
         |> List.map (\tup -> Tuple.second tup)
         |> List.head
-        |> Maybe.withDefault ""
+        |> Maybe.withDefault initTrackInfo
+        |> .relativePath
 
 
 setTheFirstTrack : Model -> Cmd Msg
@@ -286,8 +306,9 @@ setTheFirstTrack model =
     else
         model.tracksList
             |> List.head
-            |> Maybe.withDefault ( 0, "" )
+            |> Maybe.withDefault ( 0, initTrackInfo )
             |> Tuple.second
+            |> .relativePath
             |> Ports.setTrack
 
 
@@ -329,11 +350,11 @@ view model =
         ]
 
 
-viewTrack : ( Int, String ) -> ( String, Html Msg )
+viewTrack : ( Int, TrackInfo ) -> ( String, Html Msg )
 viewTrack ( num, tr ) =
     ( toString num
     , li []
-        [ a [ href "#", onClick <| SetTrack tr ] [ text tr ]
+        [ a [ href "#", onClick <| SetTrack tr.relativePath ] [ text tr.filename ]
         ]
     )
 
@@ -344,7 +365,11 @@ viewPlayerToolbar model =
         status =
             case getCurrentTrack model.status of
                 Just tr ->
-                    p [] [ text <| Maybe.withDefault "Erreur de nom" <| parseCurrentTrack tr.track ]
+                    tr
+                        |> parseCurrentTrack
+                        |> Maybe.withDefault ""
+                        |> getTrackInfo model.tracksList
+                        |> displayCurrentTrack
 
                 Nothing ->
                     text ""
@@ -377,3 +402,27 @@ viewPlayerToolbar model =
             ]
         , status
         ]
+
+
+displayCurrentTrack : TrackInfo -> Html Msg
+displayCurrentTrack tri =
+    div []
+        [ p [] [ text <| Maybe.withDefault tri.filename tri.title ]
+        , p [] [ text <| Maybe.withDefault "" tri.artist ]
+        , p [] [ text <| Maybe.withDefault "" tri.album ]
+        , case tri.picture of
+            Just pic ->
+                img [ src <| "data:image/png;base64," ++ pic ] []
+
+            Nothing ->
+                text ""
+        ]
+
+
+getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo
+getTrackInfo ls tr =
+    ls
+        |> List.filter (\tup -> .relativePath (Tuple.second tup) == tr)
+        |> List.map (\tup -> Tuple.second tup)
+        |> List.head
+        |> Maybe.withDefault initTrackInfo
