@@ -117,7 +117,7 @@ initialModel =
 
 socketPath : String
 socketPath =
-    "ws://localhost:8082"
+    "ws://localhost:8090"
 
 
 

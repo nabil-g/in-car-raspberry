@@ -10,7 +10,7 @@ let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 
 let serverPort = 3000;
 
-const wss = new WebSocket.Server({ port: 8082 });
+const wss = new WebSocket.Server({ port: 8090 });
 
 app.listen(serverPort, function () {
     console.log('Example app listening on port 3000!')
