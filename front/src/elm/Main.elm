@@ -162,21 +162,24 @@ type Msg
     | PlayerEvent D.Value
     | Tick Time
     | ToggleLoop Bool
-    | ToggleShuffle Randomness
+    | ToggleShuffle Bool
     | GotAShuffleList (List TrackInfo)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotAShuffleList _ ->
-            ( model, Cmd.none )
+        GotAShuffleList ls ->
+            ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
 
         ToggleLoop b ->
             ( { model | loop = b }, Cmd.none )
 
-        ToggleShuffle rand ->
-            ( { model | shuffle = rand }, Cmd.none )
+        ToggleShuffle b ->
+            if b then
+                ( model, shuffleTracksList model.tracksList )
+            else
+                ( { model | shuffle = Disabled }, Cmd.none )
 
         SetTrack tr ->
             ( model, Ports.setTrack tr )
@@ -188,8 +191,11 @@ update msg model =
             case getCurrentTrack model.status of
                 Just tr ->
                     let
+                        ls =
+                            getTheWorkingList model
+
                         cmd =
-                            setAnotherTrack model.tracksList -1 tr
+                            setAnotherTrack ls -1 tr
                     in
                     ( model, cmd )
 
@@ -200,8 +206,11 @@ update msg model =
             case getCurrentTrack model.status of
                 Just tr ->
                     let
+                        ls =
+                            getTheWorkingList model
+
                         cmd =
-                            setAnotherTrack model.tracksList 1 tr
+                            setAnotherTrack ls 1 tr
                     in
                     ( model, cmd )
 
@@ -228,17 +237,20 @@ update msg model =
                 playerStatus =
                     decodePlayerEvent pe
 
+                ls =
+                    getTheWorkingList model
+
                 cmd =
                     case playerStatus of
                         Loaded tr ->
                             Ports.play ()
 
                         Ended tr ->
-                            if model.tracksList /= [] then
+                            if ls /= [] then
                                 if model.loop then
-                                    setAnotherTrack model.tracksList 0 tr
+                                    setAnotherTrack ls 0 tr
                                 else
-                                    setAnotherTrack model.tracksList 1 tr
+                                    setAnotherTrack ls 1 tr
                             else
                                 Cmd.none
 
@@ -336,6 +348,16 @@ parseCurrentTrack tr =
         |> decodeUri
 
 
+getTheWorkingList : Model -> List ( Int, TrackInfo )
+getTheWorkingList model =
+    case model.shuffle of
+        Enabled ls ->
+            ls
+
+        Disabled ->
+            model.tracksList
+
+
 
 -- SUBSCRIPTIONS
 
@@ -409,9 +431,9 @@ viewPlayerToolbar model =
 
         ( shuffleMsg, shuffleTxt ) =
             if model.shuffle == Disabled then
-                ( model, "Activer le mode aléatoire" )
+                ( True, "Activer le mode aléatoire" )
             else
-                ( Disabled, "Désactiver le mode aléatoire" )
+                ( False, "Désactiver le mode aléatoire" )
     in
     div []
         [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
