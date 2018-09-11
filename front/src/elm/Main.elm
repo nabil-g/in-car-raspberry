@@ -8,6 +8,8 @@ import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
+import Random exposing (generate)
+import Random.List exposing (shuffle)
 import Task
 import Time exposing (Time, every, inHours, inMinutes, minute, now)
 import Time.Format exposing (format)
@@ -31,7 +33,13 @@ type alias Model =
     , status : PlayerStatus
     , clock : Time
     , loop : Bool
+    , shuffle : Randomness
     }
+
+
+type Randomness
+    = Enabled (List ( Int, TrackInfo ))
+    | Disabled
 
 
 type PlayerStatus
@@ -131,6 +139,7 @@ initialModel =
     , status = Empty
     , clock = 0
     , loop = False
+    , shuffle = Disabled
     }
 
 
@@ -153,13 +162,21 @@ type Msg
     | PlayerEvent D.Value
     | Tick Time
     | ToggleLoop Bool
+    | ToggleShuffle Randomness
+    | GotAShuffleList (List TrackInfo)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotAShuffleList _ ->
+            ( model, Cmd.none )
+
         ToggleLoop b ->
             ( { model | loop = b }, Cmd.none )
+
+        ToggleShuffle rand ->
+            ( { model | shuffle = rand }, Cmd.none )
 
         SetTrack tr ->
             ( model, Ports.setTrack tr )
@@ -389,6 +406,12 @@ viewPlayerToolbar model =
 
                 _ ->
                     False
+
+        ( shuffleMsg, shuffleTxt ) =
+            if model.shuffle == Disabled then
+                ( model, "Activer le mode aléatoire" )
+            else
+                ( Disabled, "Désactiver le mode aléatoire" )
     in
     div []
         [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
@@ -400,8 +423,19 @@ viewPlayerToolbar model =
               else
                 text "Activer la répétition"
             ]
+        , button [ onClick <| ToggleShuffle shuffleMsg, disabled disableOnError ]
+            [ text shuffleTxt
+            ]
         , status
         ]
+
+
+shuffleTracksList : List ( Int, TrackInfo ) -> Cmd Msg
+shuffleTracksList ls =
+    ls
+        |> List.map (\el -> Tuple.second el)
+        |> shuffle
+        |> generate GotAShuffleList
 
 
 displayCurrentTrack : TrackInfo -> Html Msg
