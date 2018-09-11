@@ -54,8 +54,8 @@ wss.on('connection', function (ws) {
 
 let filterExtension = function (element) {
     let extName = path.extname(element);
-    let exluded = element.startsWith('#');
-    return (extName === '.mp3' || extName === '.wav' || extName === '.ogg') && !exluded ;
+    let excluded = element.startsWith('#');
+    return (extName === '.mp3' || extName === '.wav' || extName === '.ogg') && !excluded ;
 };
 
 
