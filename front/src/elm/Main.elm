@@ -8,6 +8,8 @@ import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
+import Random exposing (generate)
+import Random.List exposing (shuffle)
 import Task
 import Time exposing (Time, every, inHours, inMinutes, minute, now)
 import Time.Format exposing (format)
@@ -31,7 +33,13 @@ type alias Model =
     , status : PlayerStatus
     , clock : Time
     , loop : Bool
+    , shuffle : Randomness
     }
+
+
+type Randomness
+    = Enabled (List ( Int, TrackInfo ))
+    | Disabled
 
 
 type PlayerStatus
@@ -131,6 +139,7 @@ initialModel =
     , status = Empty
     , clock = 0
     , loop = False
+    , shuffle = Disabled
     }
 
 
@@ -153,13 +162,24 @@ type Msg
     | PlayerEvent D.Value
     | Tick Time
     | ToggleLoop Bool
+    | ToggleShuffle Bool
+    | GotAShuffleList (List TrackInfo)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotAShuffleList ls ->
+            ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
+
         ToggleLoop b ->
             ( { model | loop = b }, Cmd.none )
+
+        ToggleShuffle b ->
+            if b then
+                ( model, shuffleTracksList model.tracksList )
+            else
+                ( { model | shuffle = Disabled }, Cmd.none )
 
         SetTrack tr ->
             ( model, Ports.setTrack tr )
@@ -171,8 +191,11 @@ update msg model =
             case getCurrentTrack model.status of
                 Just tr ->
                     let
+                        ls =
+                            getTheWorkingList model
+
                         cmd =
-                            setAnotherTrack model.tracksList -1 tr
+                            setAnotherTrack ls -1 tr
                     in
                     ( model, cmd )
 
@@ -183,8 +206,11 @@ update msg model =
             case getCurrentTrack model.status of
                 Just tr ->
                     let
+                        ls =
+                            getTheWorkingList model
+
                         cmd =
-                            setAnotherTrack model.tracksList 1 tr
+                            setAnotherTrack ls 1 tr
                     in
                     ( model, cmd )
 
@@ -211,17 +237,20 @@ update msg model =
                 playerStatus =
                     decodePlayerEvent pe
 
+                ls =
+                    getTheWorkingList model
+
                 cmd =
                     case playerStatus of
                         Loaded tr ->
                             Ports.play ()
 
                         Ended tr ->
-                            if model.tracksList /= [] then
+                            if ls /= [] then
                                 if model.loop then
-                                    setAnotherTrack model.tracksList 0 tr
+                                    setAnotherTrack ls 0 tr
                                 else
-                                    setAnotherTrack model.tracksList 1 tr
+                                    setAnotherTrack ls 1 tr
                             else
                                 Cmd.none
 
@@ -319,6 +348,16 @@ parseCurrentTrack tr =
         |> decodeUri
 
 
+getTheWorkingList : Model -> List ( Int, TrackInfo )
+getTheWorkingList model =
+    case model.shuffle of
+        Enabled ls ->
+            ls
+
+        Disabled ->
+            model.tracksList
+
+
 
 -- SUBSCRIPTIONS
 
@@ -389,6 +428,12 @@ viewPlayerToolbar model =
 
                 _ ->
                     False
+
+        ( shuffleMsg, shuffleTxt ) =
+            if model.shuffle == Disabled then
+                ( True, "Activer le mode aléatoire" )
+            else
+                ( False, "Désactiver le mode aléatoire" )
     in
     div []
         [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
@@ -400,8 +445,19 @@ viewPlayerToolbar model =
               else
                 text "Activer la répétition"
             ]
+        , button [ onClick <| ToggleShuffle shuffleMsg, disabled disableOnError ]
+            [ text shuffleTxt
+            ]
         , status
         ]
+
+
+shuffleTracksList : List ( Int, TrackInfo ) -> Cmd Msg
+shuffleTracksList ls =
+    ls
+        |> List.map (\el -> Tuple.second el)
+        |> shuffle
+        |> generate GotAShuffleList
 
 
 displayCurrentTrack : TrackInfo -> Html Msg
