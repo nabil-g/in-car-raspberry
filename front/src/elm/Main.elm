@@ -173,7 +173,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Search s ->
-            ( { model | search = s }, Cmd.none )
+            ( { model | search = String.toLower s }, Cmd.none )
 
         GotAShuffleList ls ->
             ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
@@ -199,6 +199,7 @@ update msg model =
                     let
                         ls =
                             getTheWorkingList model
+                                |> getTheFilteredList model.search
 
                         cmd =
                             setAnotherTrack ls -1 tr
@@ -214,6 +215,7 @@ update msg model =
                     let
                         ls =
                             getTheWorkingList model
+                                |> getTheFilteredList model.search
 
                         cmd =
                             setAnotherTrack ls 1 tr
@@ -245,6 +247,7 @@ update msg model =
 
                 ls =
                     getTheWorkingList model
+                        |> getTheFilteredList model.search
 
                 cmd =
                     case playerStatus of
@@ -354,19 +357,29 @@ parseCurrentTrack tr =
         |> decodeUri
 
 
+getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
+getTheFilteredList query ls =
+    let
+        filteringFunc el =
+            (String.contains query <| String.toLower el.filename)
+                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.title)
+                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.artist)
+                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.album)
+    in
+    ls
+        |> List.map (\element -> Tuple.second element)
+        |> List.filter filteringFunc
+        |> List.indexedMap (,)
+
+
 getTheWorkingList : Model -> List ( Int, TrackInfo )
 getTheWorkingList model =
-    let
-        list =
-            case model.shuffle of
-                Enabled ls ->
-                    ls
+    case model.shuffle of
+        Enabled ls ->
+            ls
 
-                Disabled ->
-                    model.tracksList
-    in
-    list
-        |> List.filter (\el -> Tuple.second el)
+        Disabled ->
+            model.tracksList
 
 
 
@@ -391,7 +404,7 @@ view model =
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
         , HK.ul []
-            (List.map viewTrack model.tracksList)
+            (List.map viewTrack <| getTheFilteredList model.search model.tracksList)
         , viewPlayerToolbar model
         , div []
             [ text <| format "%H" model.clock
