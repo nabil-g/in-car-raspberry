@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Html.Keyed as HK
 import Http exposing (decodeUri)
 import Json.Decode as D
@@ -34,6 +34,7 @@ type alias Model =
     , clock : Time
     , loop : Bool
     , shuffle : Randomness
+    , search : String
     }
 
 
@@ -140,6 +141,7 @@ initialModel =
     , clock = 0
     , loop = False
     , shuffle = Disabled
+    , search = ""
     }
 
 
@@ -164,11 +166,15 @@ type Msg
     | ToggleLoop Bool
     | ToggleShuffle Bool
     | GotAShuffleList (List TrackInfo)
+    | Search String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Search s ->
+            ( { model | search = s }, Cmd.none )
+
         GotAShuffleList ls ->
             ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
 
@@ -350,12 +356,17 @@ parseCurrentTrack tr =
 
 getTheWorkingList : Model -> List ( Int, TrackInfo )
 getTheWorkingList model =
-    case model.shuffle of
-        Enabled ls ->
-            ls
+    let
+        list =
+            case model.shuffle of
+                Enabled ls ->
+                    ls
 
-        Disabled ->
-            model.tracksList
+                Disabled ->
+                    model.tracksList
+    in
+    list
+        |> List.filter (\el -> Tuple.second el)
 
 
 
@@ -378,7 +389,8 @@ subscriptions m =
 view : Model -> Html Msg
 view model =
     div []
-        [ HK.ul []
+        [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
+        , HK.ul []
             (List.map viewTrack model.tracksList)
         , viewPlayerToolbar model
         , div []
