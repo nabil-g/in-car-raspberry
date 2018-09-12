@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Html.Keyed as HK
 import Http exposing (decodeUri)
 import Json.Decode as D
@@ -34,6 +34,7 @@ type alias Model =
     , clock : Time
     , loop : Bool
     , shuffle : Randomness
+    , search : String
     }
 
 
@@ -140,6 +141,7 @@ initialModel =
     , clock = 0
     , loop = False
     , shuffle = Disabled
+    , search = ""
     }
 
 
@@ -164,11 +166,15 @@ type Msg
     | ToggleLoop Bool
     | ToggleShuffle Bool
     | GotAShuffleList (List TrackInfo)
+    | Search String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Search s ->
+            ( { model | search = String.toLower s }, Cmd.none )
+
         GotAShuffleList ls ->
             ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
 
@@ -193,6 +199,7 @@ update msg model =
                     let
                         ls =
                             getTheWorkingList model
+                                |> getTheFilteredList model.search
 
                         cmd =
                             setAnotherTrack ls -1 tr
@@ -208,6 +215,7 @@ update msg model =
                     let
                         ls =
                             getTheWorkingList model
+                                |> getTheFilteredList model.search
 
                         cmd =
                             setAnotherTrack ls 1 tr
@@ -239,6 +247,7 @@ update msg model =
 
                 ls =
                     getTheWorkingList model
+                        |> getTheFilteredList model.search
 
                 cmd =
                     case playerStatus of
@@ -348,6 +357,21 @@ parseCurrentTrack tr =
         |> decodeUri
 
 
+getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
+getTheFilteredList query ls =
+    let
+        filteringFunc el =
+            (String.contains query <| String.toLower el.filename)
+                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.title)
+                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.artist)
+                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.album)
+    in
+    ls
+        |> List.map (\element -> Tuple.second element)
+        |> List.filter filteringFunc
+        |> List.indexedMap (,)
+
+
 getTheWorkingList : Model -> List ( Int, TrackInfo )
 getTheWorkingList model =
     case model.shuffle of
@@ -378,8 +402,9 @@ subscriptions m =
 view : Model -> Html Msg
 view model =
     div []
-        [ HK.ul []
-            (List.map viewTrack model.tracksList)
+        [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
+        , HK.ul []
+            (List.map viewTrack <| getTheFilteredList model.search model.tracksList)
         , viewPlayerToolbar model
         , div []
             [ text <| format "%H" model.clock
