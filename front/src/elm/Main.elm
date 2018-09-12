@@ -404,7 +404,7 @@ view model =
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
         , HK.ul []
-            (List.map viewTrack <| getTheFilteredList model.search model.tracksList)
+            (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
         , viewPlayerToolbar model
         , div []
             [ text <| format "%H" model.clock
@@ -414,11 +414,24 @@ view model =
         ]
 
 
-viewTrack : ( Int, TrackInfo ) -> ( String, Html Msg )
-viewTrack ( num, tr ) =
+viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Html Msg )
+viewTrack ps ( num, tr ) =
+    let
+        currentTrack =
+            getCurrentTrack ps
+                |> Maybe.andThen parseCurrentTrack
+                |> Maybe.withDefault ""
+                |> (==) tr.relativePath
+    in
     ( toString num
     , li []
-        [ a [ href "#", onClick <| SetTrack tr.relativePath ] [ text tr.filename ]
+        [ a [ href "#", onClick <| SetTrack tr.relativePath ]
+            [ text tr.filename
+            , if currentTrack then
+                text "  -  En écoute"
+              else
+                text ""
+            ]
         ]
     )
 
@@ -503,7 +516,7 @@ displayCurrentTrack tri =
 getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo
 getTrackInfo ls tr =
     ls
-        |> List.filter (\tup -> .relativePath (Tuple.second tup) == tr)
         |> List.map (\tup -> Tuple.second tup)
+        |> List.filter (\el -> el.relativePath == tr)
         |> List.head
         |> Maybe.withDefault initTrackInfo
