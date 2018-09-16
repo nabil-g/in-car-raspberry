@@ -25,6 +25,13 @@ viewBody model =
 
         ct =
             model.clock.currentTime
+
+        format num =
+            if num >= 0 && num < 10 then
+                "0" ++ String.fromInt num
+
+            else
+                String.fromInt num
     in
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
@@ -32,9 +39,9 @@ viewBody model =
             (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
         , viewPlayerToolbar model
         , div []
-            [ text <| String.fromInt <| Time.toHour zone ct
+            [ text <| format <| Time.toHour zone ct
             , text ":"
-            , text <| String.fromInt <| Time.toMinute zone ct
+            , text <| format <| Time.toMinute zone ct
             ]
         ]
 
