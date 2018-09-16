@@ -1,25 +1,40 @@
-module View exposing (..)
+module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
+import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Html.Keyed as HK
 import Model exposing (Model, PlayerStatus(..), Randomness(..), TrackInfo, getTrackInfo)
-import Time.Format exposing (format)
+import Time
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList, parseCurrentTrack)
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
+    { title = "InCarRaspberry"
+    , body = [ viewBody model ]
+    }
+
+
+viewBody : Model -> Html Msg
+viewBody model =
+    let
+        zone =
+            model.clock.timezone
+
+        ct =
+            model.clock.currentTime
+    in
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
         , HK.ul []
             (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
         , viewPlayerToolbar model
         , div []
-            [ text <| format "%H" model.clock
-            , text <| ":"
-            , text <| format "%M" model.clock
+            [ text <| String.fromInt <| Time.toHour zone ct
+            , text ":"
+            , text <| String.fromInt <| Time.toMinute zone ct
             ]
         ]
 
@@ -33,12 +48,13 @@ viewTrack ps ( num, tr ) =
                 |> Maybe.withDefault ""
                 |> (==) tr.relativePath
     in
-    ( toString num
+    ( String.fromInt num
     , li []
         [ a [ href "#", onClick <| SetTrack tr.relativePath ]
             [ text tr.filename
             , if currentTrack then
                 text "  -  En écoute"
+
               else
                 text ""
             ]
@@ -80,6 +96,7 @@ viewPlayerToolbar model =
         ( shuffleMsg, shuffleTxt ) =
             if model.shuffle == Disabled then
                 ( True, "Activer le mode aléatoire" )
+
             else
                 ( False, "Désactiver le mode aléatoire" )
     in
@@ -87,9 +104,10 @@ viewPlayerToolbar model =
         [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
         , button [ onClick buttonMsg, disabled disableOnError ] [ text buttonTxt ]
         , button [ onClick Next, disabled disableOnError ] [ text "Suiv" ]
-        , button [ onClick <| ToggleLoop <| not model.loop, disabled disableOnError, style [ ( "margin-left", "10px" ) ] ]
+        , button [ onClick <| ToggleLoop <| not model.loop, disabled disableOnError, style "margin-left" "10px" ]
             [ if model.loop then
                 text "Désactiver la répétition"
+
               else
                 text "Activer la répétition"
             ]

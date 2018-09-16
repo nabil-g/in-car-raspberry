@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const mm = require('music-metadata');
-const WebSocket = require('ws');
+const io = require('socket.io')(8090);
 const fs = require('fs');
 const path = require('path');
 
@@ -9,7 +9,6 @@ let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 
 let serverPort = 3000;
 
-const wss = new WebSocket.Server({ port: 8090 });
 
 app.listen(serverPort, function () {
     console.log('Example app listening on port 3000!')
@@ -18,8 +17,7 @@ app.listen(serverPort, function () {
 
 app.use(express.static(musicDir));
 
-wss.on('connection', function (ws) {
-
+io.on('connection', function (sock) {
     console.log('----------> one guy is connected !!!');
 
     fs.readdir(musicDir, function (err, files)  {
@@ -33,7 +31,7 @@ wss.on('connection', function (ws) {
                     let augmentedTrack = getInfo(file, metadata);
                     tracksList.push(augmentedTrack);
                     if (tracksList.length === arr.length) {
-                        ws.send(JSON.stringify(tracksList));
+                        io.emit('tracks',JSON.stringify(tracksList));
                         // console.log(tracksList);
                     }
                 })
@@ -41,7 +39,7 @@ wss.on('connection', function (ws) {
                     console.error(err.message);
                 });
         });
-        // ws.send(JSON.stringify(tracksList));
+        // io.emit('tracks',JSON.stringify(tracksList));
         // console.log(tracksList);
 
         if (err) {

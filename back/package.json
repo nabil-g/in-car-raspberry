@@ -12,6 +12,6 @@
   "dependencies": {
     "express": "^4.16.3",
     "music-metadata": "^2.4.3",
-    "ws": "^6.0.0"
+    "socket.io": "^2.1.1"
   }
 }

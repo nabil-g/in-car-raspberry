@@ -1,13 +1,21 @@
-module Main exposing (..)
+module Main exposing (main)
 
-import Html exposing (program)
+import Browser exposing (document)
 import Model exposing (Model, initialModel)
 import Task
 import Time exposing (now)
-import Update exposing (Msg(Tick), subscriptions, update)
+import Update exposing (Msg(..), subscriptions, update)
 import View exposing (view)
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program { init = ( initialModel, Task.perform Tick now ), view = view, update = update, subscriptions = subscriptions }
+    Browser.document { init = \_ -> ( initialModel, getTimeZoneAndCurrentTime ), view = view, update = update, subscriptions = subscriptions }
+
+
+getTimeZoneAndCurrentTime : Cmd Msg
+getTimeZoneAndCurrentTime =
+    Cmd.batch
+        [ Task.perform AdjustTimeZone Time.here
+        , Task.perform Tick Time.now
+        ]
