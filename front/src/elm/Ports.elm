@@ -1,16 +1,20 @@
-port module Ports exposing (..)
+port module Ports exposing (incomingSocketMsg, pause, play, playerEvent, setTrack)
 
 import Json.Decode exposing (Value)
 
 
--- audio listeners
+
+-- incoming
 
 
 port playerEvent : (Value -> msg) -> Sub msg
 
 
+port incomingSocketMsg : (String -> msg) -> Sub msg
 
--- audio commands
+
+
+-- outgoing
 
 
 port setTrack : String -> Cmd msg

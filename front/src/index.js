@@ -1,13 +1,19 @@
-let Elm = require( '../elm/Main' );
+const { Elm } = require('./elm/Main.elm');
+import io from 'socket.io-client';
+const socket = io('http://localhost:8090');
 
-// let app = Elm.Main.embed(document.getElementById('main'));
-let app = Elm.Main.fullscreen();
+
+let app = Elm.Main.init({});
 
 let audioPlayer = new Audio();
 
 window.ap = audioPlayer;
 
 // events
+
+socket.on('tracks', (msg) => {
+    app.ports.incomingSocketMsg.send(msg);
+});
 
 audioPlayer.onended = function() {
     console.log("The audio has ended");

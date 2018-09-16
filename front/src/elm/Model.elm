@@ -1,17 +1,23 @@
-module Model exposing (..)
+module Model exposing (Base64, Model, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, trackDecoder)
 
-import Json.Decode as D
-import Json.Decode.Pipeline as P exposing (decode, optional, required)
-import Time exposing (Time)
+import Json.Decode as D exposing (succeed)
+import Json.Decode.Pipeline as P exposing (optional, required)
+import Time
 
 
 type alias Model =
     { tracksList : List ( Int, TrackInfo )
     , status : PlayerStatus
-    , clock : Time
+    , clock : Clock
     , loop : Bool
     , shuffle : Randomness
     , search : String
+    }
+
+
+type alias Clock =
+    { timezone : Time.Zone
+    , currentTime : Time.Posix
     }
 
 
@@ -45,7 +51,7 @@ decodePlayerEvent : D.Value -> PlayerStatus
 decodePlayerEvent val =
     let
         playerEventDecoder =
-            P.decode PlayerStatusEvent
+            D.succeed PlayerStatusEvent
                 |> P.required "event" D.string
                 |> P.required "track" D.string
                 |> P.optional "error " (D.nullable D.int) Nothing
@@ -102,7 +108,7 @@ type alias Base64 =
 
 trackDecoder : D.Decoder TrackInfo
 trackDecoder =
-    decode TrackInfo
+    D.succeed TrackInfo
         |> P.required "relativePath" D.string
         |> P.required "filename" D.string
         |> optional "title" (D.nullable D.string) Nothing
@@ -115,16 +121,11 @@ initialModel : Model
 initialModel =
     { tracksList = []
     , status = Empty
-    , clock = 0
+    , clock = Clock Time.utc (Time.millisToPosix 0)
     , loop = False
     , shuffle = Disabled
     , search = ""
     }
-
-
-socketPath : String
-socketPath =
-    "ws://localhost:8090"
 
 
 getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo

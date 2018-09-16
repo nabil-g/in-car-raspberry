@@ -1,13 +1,16 @@
-module Update exposing (..)
+module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, parseCurrentTrack, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
 
-import Http exposing (decodeUri)
 import Json.Decode as D
-import Model exposing (Model, PlayerStatus(..), PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, initTrackInfo, socketPath, trackDecoder)
+import Model exposing (Model, PlayerStatus(..), PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, initTrackInfo, trackDecoder)
 import Ports
 import Random exposing (generate)
 import Random.List exposing (shuffle)
-import Time exposing (Time, every, minute)
-import WebSocket
+import Time
+import Url exposing (percentDecode)
+
+
+
+--import WebSocket
 
 
 type Msg
@@ -18,7 +21,8 @@ type Msg
     | Previous
     | Next
     | PlayerEvent D.Value
-    | Tick Time
+    | Tick Time.Posix
+    | AdjustTimeZone Time.Zone
     | ToggleLoop Bool
     | ToggleShuffle Bool
     | GotAShuffleList (List TrackInfo)
@@ -32,7 +36,7 @@ update msg model =
             ( { model | search = String.toLower s }, Cmd.none )
 
         GotAShuffleList ls ->
-            ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
+            ( { model | shuffle = Enabled <| List.indexedMap (\a b -> ( a, b )) ls }, Cmd.none )
 
         ToggleLoop b ->
             ( { model | loop = b }, Cmd.none )
@@ -40,6 +44,7 @@ update msg model =
         ToggleShuffle b ->
             if b then
                 ( model, shuffleTracksList model.tracksList )
+
             else
                 ( { model | shuffle = Disabled }, Cmd.none )
 
@@ -114,8 +119,10 @@ update msg model =
                             if ls /= [] then
                                 if model.loop then
                                     setAnotherTrack ls 0 tr
+
                                 else
                                     setAnotherTrack ls 1 tr
+
                             else
                                 Cmd.none
 
@@ -129,7 +136,7 @@ update msg model =
                 x =
                     case D.decodeString (D.list trackDecoder) mess of
                         Ok ls ->
-                            ls |> List.indexedMap (,)
+                            ls |> List.indexedMap (\a b -> ( a, b ))
 
                         Err ls ->
                             []
@@ -137,7 +144,20 @@ update msg model =
             ( { model | tracksList = x }, Cmd.none )
 
         Tick time ->
-            ( { model | clock = time }, Cmd.none )
+            let
+                clock =
+                    model.clock
+            in
+            { clock | currentTime = time }
+                |> (\c -> ( { model | clock = c }, Cmd.none ))
+
+        AdjustTimeZone zone ->
+            let
+                clock =
+                    model.clock
+            in
+            { clock | timezone = zone }
+                |> (\c -> ( { model | clock = c }, Cmd.none ))
 
 
 getCurrentTrack : PlayerStatus -> Maybe PlayingPath
@@ -166,6 +186,7 @@ setAnotherTrack ls direction tr =
             |> getAnotherTrack tr direction
             |> Debug.log "new track is : "
             |> Ports.setTrack
+
     else
         Cmd.none
 
@@ -183,7 +204,7 @@ getAnotherTrack tr direction ls =
                 |> Maybe.withDefault 0
 
         nextTrackIndex =
-            (curindex + direction) % List.length ls
+            modBy (List.length ls) (curindex + direction)
     in
     ls
         |> List.filter (\tup -> Tuple.first tup == nextTrackIndex)
@@ -197,6 +218,7 @@ setTheFirstTrack : Model -> Cmd Msg
 setTheFirstTrack model =
     if model.tracksList == [] then
         Cmd.none
+
     else
         model.tracksList
             |> List.head
@@ -210,7 +232,7 @@ parseCurrentTrack : String -> Maybe String
 parseCurrentTrack tr =
     tr
         |> String.dropLeft 22
-        |> decodeUri
+        |> percentDecode
 
 
 getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
@@ -225,7 +247,7 @@ getTheFilteredList query ls =
     ls
         |> List.map (\element -> Tuple.second element)
         |> List.filter filteringFunc
-        |> List.indexedMap (,)
+        |> List.indexedMap (\a b -> ( a, b ))
 
 
 getTheWorkingList : Model -> List ( Int, TrackInfo )
@@ -249,7 +271,7 @@ shuffleTracksList ls =
 subscriptions : Model -> Sub Msg
 subscriptions m =
     Sub.batch
-        [ WebSocket.listen socketPath IncomingSocketMsg
+        [ Ports.incomingSocketMsg IncomingSocketMsg
         , Ports.playerEvent PlayerEvent
-        , every minute Tick
+        , Time.every 60000 Tick
         ]
