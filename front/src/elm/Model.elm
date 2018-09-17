@@ -1,8 +1,10 @@
 module Model exposing (Base64, Model, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, trackDecoder)
 
+import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
 import Json.Decode.Pipeline as P exposing (optional, required)
 import Time
+import Url exposing (Url)
 
 
 type alias Model =
@@ -12,7 +14,14 @@ type alias Model =
     , loop : Bool
     , shuffle : Randomness
     , search : String
+    , appKey : Nav.Key
     }
+
+
+type Route
+    = Media
+    | Settings
+    | NotFound
 
 
 type alias Clock =
@@ -117,14 +126,15 @@ trackDecoder =
         |> optional "picture" (D.nullable D.string) Nothing
 
 
-initialModel : Model
-initialModel =
+initialModel : Url.Url -> Nav.Key -> Model
+initialModel url key =
     { tracksList = []
     , status = Empty
     , clock = Clock Time.utc (Time.millisToPosix 0)
     , loop = False
     , shuffle = Disabled
     , search = ""
+    , appKey = key
     }
 
 

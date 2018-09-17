@@ -1,16 +1,14 @@
 module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, parseCurrentTrack, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
 
+import Browser
+import Browser.Navigation as Nav exposing (load, pushUrl)
 import Json.Decode as D
 import Model exposing (Model, PlayerStatus(..), PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, initTrackInfo, trackDecoder)
 import Ports
 import Random exposing (generate)
 import Random.List exposing (shuffle)
 import Time
-import Url exposing (percentDecode)
-
-
-
---import WebSocket
+import Url exposing (Url, percentDecode)
 
 
 type Msg
@@ -27,11 +25,28 @@ type Msg
     | ToggleShuffle Bool
     | GotAShuffleList (List TrackInfo)
     | Search String
+    | UrlChanged Url.Url
+    | LinkClicked Browser.UrlRequest
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.appKey (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            let
+                x =
+                    Debug.log "xxx" <| Url.toString url
+            in
+            ( model, Cmd.none )
+
         Search s ->
             ( { model | search = String.toLower s }, Cmd.none )
 

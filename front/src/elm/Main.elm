@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Browser exposing (document)
+import Browser exposing (application)
 import Model exposing (Model, initialModel)
 import Task
 import Time exposing (now)
@@ -10,7 +10,7 @@ import View exposing (view)
 
 main : Program () Model Msg
 main =
-    Browser.document { init = \_ -> ( initialModel, getTimeZoneAndCurrentTime ), view = view, update = update, subscriptions = subscriptions }
+    Browser.application { init = \_ url key -> ( initialModel url key, getTimeZoneAndCurrentTime ), view = view, update = update, subscriptions = subscriptions, onUrlChange = UrlChanged, onUrlRequest = LinkClicked }
 
 
 getTimeZoneAndCurrentTime : Cmd Msg
