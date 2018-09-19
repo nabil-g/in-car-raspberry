@@ -5,9 +5,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Html.Keyed as HK
-import Model exposing (Model, PlayerStatus(..), Randomness(..), TrackInfo, getTrackInfo)
+import Model exposing (Model, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo)
 import Time
-import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList, parseCurrentTrack)
+import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList, parsePath)
 
 
 view : Model -> Document Msg
@@ -26,6 +26,17 @@ viewBody model =
         ct =
             model.clock.currentTime
 
+        currentPage =
+            case model.currentPage of
+                Media ->
+                    viewMedia model
+
+                Settings ->
+                    text "Réglages ..."
+
+                NotFound ->
+                    text "Not found"
+
         format num =
             if num >= 0 && num < 10 then
                 "0" ++ String.fromInt num
@@ -34,15 +45,26 @@ viewBody model =
                 String.fromInt num
     in
     div []
-        [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
-        , HK.ul []
-            (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
-        , viewPlayerToolbar model
+        [ currentPage
         , div []
             [ text <| format <| Time.toHour zone ct
             , text ":"
             , text <| format <| Time.toMinute zone ct
             ]
+        , div []
+            [ a [ href "/media" ] [ text "Audio" ]
+            , a [ href "/settings" ] [ text "Réglages" ]
+            ]
+        ]
+
+
+viewMedia : Model -> Html Msg
+viewMedia model =
+    div []
+        [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
+        , HK.ul []
+            (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
+        , viewPlayerToolbar model
         ]
 
 
@@ -51,7 +73,7 @@ viewTrack ps ( num, tr ) =
     let
         currentTrack =
             getCurrentTrack ps
-                |> Maybe.andThen parseCurrentTrack
+                |> Maybe.andThen parsePath
                 |> Maybe.withDefault ""
                 |> (==) tr.relativePath
     in
@@ -76,7 +98,7 @@ viewPlayerToolbar model =
             case getCurrentTrack model.status of
                 Just tr ->
                     tr
-                        |> parseCurrentTrack
+                        |> parsePath
                         |> Maybe.withDefault ""
                         |> getTrackInfo model.tracksList
                         |> displayCurrentTrack

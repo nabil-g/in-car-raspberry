@@ -1,4 +1,4 @@
-module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, parseCurrentTrack, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
+module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, parsePath, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
 
 import Browser
 import Browser.Navigation as Nav exposing (load, pushUrl)
@@ -210,7 +210,7 @@ getAnotherTrack : String -> Int -> List ( Int, TrackInfo ) -> String
 getAnotherTrack tr direction ls =
     let
         parsedTr =
-            Maybe.withDefault "" <| parseCurrentTrack tr
+            Maybe.withDefault "" <| parsePath tr
 
         curindex =
             List.filter (\tup -> .relativePath (Tuple.second tup) == parsedTr) ls
@@ -243,8 +243,8 @@ setTheFirstTrack model =
             |> Ports.setTrack
 
 
-parseCurrentTrack : String -> Maybe String
-parseCurrentTrack tr =
+parsePath : String -> Maybe String
+parsePath tr =
     tr
         |> String.dropLeft 22
         |> percentDecode

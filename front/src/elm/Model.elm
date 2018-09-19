@@ -1,4 +1,4 @@
-module Model exposing (Base64, Model, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, trackDecoder)
+module Model exposing (Base64, Model, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, trackDecoder)
 
 import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
@@ -15,6 +15,7 @@ type alias Model =
     , shuffle : Randomness
     , search : String
     , appKey : Nav.Key
+    , currentPage : Route
     }
 
 
@@ -135,6 +136,7 @@ initialModel url key =
     , shuffle = Disabled
     , search = ""
     , appKey = key
+    , currentPage = Media
     }
 
 
