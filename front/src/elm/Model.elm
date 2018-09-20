@@ -142,7 +142,7 @@ initialModel url key =
     { clock = Clock Time.utc (Time.millisToPosix 0)
     , routing =
         { key = key
-        , currentPage = urlToRoute <| Maybe.withDefault "" <| parsePath <| Url.toString url
+        , currentPage = urlToRoute url
         }
     , player =
         { tracksList = []
@@ -170,9 +170,14 @@ parsePath tr =
         |> percentDecode
 
 
-urlToRoute : String -> Route
-urlToRoute path =
+urlToRoute : Url -> Route
+urlToRoute url =
     let
+        path =
+            Url.toString url
+                |> parsePath
+                |> Maybe.withDefault ""
+
         cleanedPath =
             if String.endsWith "#" path then
                 String.dropRight 1 path

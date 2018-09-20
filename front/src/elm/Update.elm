@@ -3,7 +3,7 @@ module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFiltere
 import Browser
 import Browser.Navigation as Nav exposing (load, pushUrl)
 import Json.Decode as D
-import Model exposing (Model, PlayerStatus(..), PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, initTrackInfo, trackDecoder, Player, Routing, Route(..), parsePath, urlToRoute)
+import Model exposing (Model, Player, PlayerStatus(..), PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, initTrackInfo, parsePath, trackDecoder, urlToRoute)
 import Ports
 import Random exposing (generate)
 import Random.List exposing (shuffle)
@@ -43,12 +43,11 @@ update msg model =
         UrlChanged url ->
             let
                 newRoute =
-                    urlToRoute <| Maybe.withDefault "" <| parsePath <| Url.toString url
+                    urlToRoute url
 
                 newRouting =
-                      model.routing
-                        |> (\routing -> { routing | currentPage = newRoute})
-
+                    model.routing
+                        |> (\routing -> { routing | currentPage = newRoute })
             in
             ( { model | routing = newRouting }, Cmd.none )
 
@@ -56,7 +55,7 @@ update msg model =
             let
                 updatedPlayer =
                     model.player
-                     |> (\player -> { player | search = String.toLower s })
+                        |> (\player -> { player | search = String.toLower s })
             in
             ( { model | player = updatedPlayer }, Cmd.none )
 
@@ -64,7 +63,7 @@ update msg model =
             let
                 updatedPlayer =
                     model.player
-                     |> (\player -> { player | shuffle = Enabled <| List.indexedMap (\a b -> ( a, b )) ls })
+                        |> (\player -> { player | shuffle = Enabled <| List.indexedMap (\a b -> ( a, b )) ls })
             in
             ( { model | player = updatedPlayer }, Cmd.none )
 
@@ -72,7 +71,7 @@ update msg model =
             let
                 updatedPlayer =
                     model.player
-                     |> (\player -> { player | loop = b  })
+                        |> (\player -> { player | loop = b })
             in
             ( { model | player = updatedPlayer }, Cmd.none )
 
@@ -84,10 +83,9 @@ update msg model =
                 let
                     updatedPlayer =
                         model.player
-                         |> (\player -> { player | shuffle = Disabled })
+                            |> (\player -> { player | shuffle = Disabled })
                 in
                 ( { model | player = updatedPlayer }, Cmd.none )
-
 
         SetTrack tr ->
             ( model, Ports.setTrack tr )
@@ -171,9 +169,8 @@ update msg model =
                             Cmd.none
 
                 updatedPlayer =
-                      model.player
+                    model.player
                         |> (\player -> { player | status = playerStatus })
-
             in
             ( { model | player = updatedPlayer }, cmd )
 
@@ -186,8 +183,9 @@ update msg model =
 
                         Err ls ->
                             []
+
                 updatedPlayer =
-                      model.player
+                    model.player
                         |> (\player -> { player | tracksList = x })
             in
             ( { model | player = updatedPlayer }, Cmd.none )
@@ -226,7 +224,6 @@ getCurrentTrack ps =
 
         _ ->
             Nothing
-
 
 
 setAnotherTrack : List ( Int, TrackInfo ) -> Int -> String -> Cmd Msg
@@ -276,8 +273,6 @@ setTheFirstTrack player =
             |> Tuple.second
             |> .relativePath
             |> Ports.setTrack
-
-
 
 
 getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
