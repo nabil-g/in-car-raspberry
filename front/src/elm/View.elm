@@ -5,9 +5,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Html.Keyed as HK
-import Model exposing (Model, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo)
+import Model exposing (Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath)
 import Time
-import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList, parsePath)
+import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
 
 
 view : Model -> Document Msg
@@ -27,9 +27,9 @@ viewBody model =
             model.clock.currentTime
 
         currentPage =
-            case model.currentPage of
+            case model.routing.currentPage of
                 Media ->
-                    viewMedia model
+                    viewMedia model.player
 
                 Settings ->
                     text "Réglages ..."
@@ -45,26 +45,26 @@ viewBody model =
                 String.fromInt num
     in
     div []
-        [ currentPage
+        [ div []
+            [ a [ href "/media", style "margin-right" "10px" ] [ text "Audio" ]
+            , a [ href "/settings" ] [ text "Réglages" ]
+            ]
+        , currentPage
         , div []
             [ text <| format <| Time.toHour zone ct
             , text ":"
             , text <| format <| Time.toMinute zone ct
             ]
-        , div []
-            [ a [ href "/media" ] [ text "Audio" ]
-            , a [ href "/settings" ] [ text "Réglages" ]
-            ]
         ]
 
 
-viewMedia : Model -> Html Msg
-viewMedia model =
+viewMedia : Player -> Html Msg
+viewMedia player =
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
         , HK.ul []
-            (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
-        , viewPlayerToolbar model
+            (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)
+        , viewPlayerToolbar player
         ]
 
 
@@ -78,36 +78,34 @@ viewTrack ps ( num, tr ) =
                 |> (==) tr.relativePath
     in
     ( String.fromInt num
-    , li []
-        [ a [ href "#", onClick <| SetTrack tr.relativePath ]
-            [ text tr.filename
-            , if currentTrack then
-                text "  -  En écoute"
+    , li [ style "cursor" "pointer", onClick <| SetTrack tr.relativePath ]
+        [ text tr.filename
+        , if currentTrack then
+            text "  -  En écoute"
 
-              else
-                text ""
-            ]
+          else
+            text ""
         ]
     )
 
 
-viewPlayerToolbar : Model -> Html Msg
-viewPlayerToolbar model =
+viewPlayerToolbar : Player -> Html Msg
+viewPlayerToolbar player =
     let
         status =
-            case getCurrentTrack model.status of
+            case getCurrentTrack player.status of
                 Just tr ->
                     tr
                         |> parsePath
                         |> Maybe.withDefault ""
-                        |> getTrackInfo model.tracksList
+                        |> getTrackInfo player.tracksList
                         |> displayCurrentTrack
 
                 Nothing ->
                     text ""
 
         ( buttonMsg, buttonTxt ) =
-            case model.status of
+            case player.status of
                 Playing tr ->
                     ( Pause, "Pause" )
 
@@ -115,7 +113,7 @@ viewPlayerToolbar model =
                     ( Play, "Lire" )
 
         disableOnError =
-            case model.status of
+            case player.status of
                 Error _ ->
                     True
 
@@ -123,7 +121,7 @@ viewPlayerToolbar model =
                     False
 
         ( shuffleMsg, shuffleTxt ) =
-            if model.shuffle == Disabled then
+            if player.shuffle == Disabled then
                 ( True, "Activer le mode aléatoire" )
 
             else
@@ -133,8 +131,8 @@ viewPlayerToolbar model =
         [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
         , button [ onClick buttonMsg, disabled disableOnError ] [ text buttonTxt ]
         , button [ onClick Next, disabled disableOnError ] [ text "Suiv" ]
-        , button [ onClick <| ToggleLoop <| not model.loop, disabled disableOnError, style "margin-left" "10px" ]
-            [ if model.loop then
+        , button [ onClick <| ToggleLoop <| not player.loop, disabled disableOnError, style "margin-left" "10px" ]
+            [ if player.loop then
                 text "Désactiver la répétition"
 
               else

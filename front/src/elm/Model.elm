@@ -1,20 +1,30 @@
-module Model exposing (Base64, Model, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, trackDecoder)
+module Model exposing (Base64, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, parsePath, trackDecoder, urlToRoute)
 
 import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
 import Json.Decode.Pipeline as P exposing (optional, required)
 import Time
-import Url exposing (Url)
+import Url exposing (Url, percentDecode)
 
 
 type alias Model =
+    { clock : Clock
+    , routing : Routing
+    , player : Player
+    }
+
+
+type alias Player =
     { tracksList : List ( Int, TrackInfo )
     , status : PlayerStatus
-    , clock : Clock
     , loop : Bool
     , shuffle : Randomness
     , search : String
-    , appKey : Nav.Key
+    }
+
+
+type alias Routing =
+    { key : Nav.Key
     , currentPage : Route
     }
 
@@ -129,14 +139,18 @@ trackDecoder =
 
 initialModel : Url.Url -> Nav.Key -> Model
 initialModel url key =
-    { tracksList = []
-    , status = Empty
-    , clock = Clock Time.utc (Time.millisToPosix 0)
-    , loop = False
-    , shuffle = Disabled
-    , search = ""
-    , appKey = key
-    , currentPage = Media
+    { clock = Clock Time.utc (Time.millisToPosix 0)
+    , routing =
+        { key = key
+        , currentPage = urlToRoute <| Maybe.withDefault "" <| parsePath <| Url.toString url
+        }
+    , player =
+        { tracksList = []
+        , status = Empty
+        , loop = False
+        , shuffle = Disabled
+        , search = ""
+        }
     }
 
 
@@ -147,3 +161,34 @@ getTrackInfo ls tr =
         |> List.filter (\el -> el.relativePath == tr)
         |> List.head
         |> Maybe.withDefault initTrackInfo
+
+
+parsePath : String -> Maybe String
+parsePath tr =
+    tr
+        |> String.dropLeft 22
+        |> percentDecode
+
+
+urlToRoute : String -> Route
+urlToRoute path =
+    let
+        cleanedPath =
+            if String.endsWith "#" path then
+                String.dropRight 1 path
+
+            else
+                path
+    in
+    case cleanedPath of
+        "media" ->
+            Media
+
+        "" ->
+            Media
+
+        "settings" ->
+            Settings
+
+        _ ->
+            NotFound

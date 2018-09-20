@@ -1,14 +1,14 @@
-module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, parsePath, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
+module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
 
 import Browser
 import Browser.Navigation as Nav exposing (load, pushUrl)
 import Json.Decode as D
-import Model exposing (Model, PlayerStatus(..), PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, initTrackInfo, trackDecoder)
+import Model exposing (Model, PlayerStatus(..), PlayingPath, Randomness(..), TrackInfo, decodePlayerEvent, initTrackInfo, trackDecoder, Player, Routing, Route(..), parsePath, urlToRoute)
 import Ports
 import Random exposing (generate)
 import Random.List exposing (shuffle)
 import Time
-import Url exposing (Url, percentDecode)
+import Url exposing (Url)
 
 
 type Msg
@@ -35,33 +35,59 @@ update msg model =
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model, Nav.pushUrl model.appKey (Url.toString url) )
+                    ( model, Nav.pushUrl model.routing.key (Url.toString url) )
 
                 Browser.External href ->
                     ( model, Nav.load href )
 
         UrlChanged url ->
             let
-                x =
-                    Debug.log "xxx" <| Url.toString url
+                newRoute =
+                    urlToRoute <| Maybe.withDefault "" <| parsePath <| Url.toString url
+
+                newRouting =
+                      model.routing
+                        |> (\routing -> { routing | currentPage = newRoute})
+
             in
-            ( model, Cmd.none )
+            ( { model | routing = newRouting }, Cmd.none )
 
         Search s ->
-            ( { model | search = String.toLower s }, Cmd.none )
+            let
+                updatedPlayer =
+                    model.player
+                     |> (\player -> { player | search = String.toLower s })
+            in
+            ( { model | player = updatedPlayer }, Cmd.none )
 
         GotAShuffleList ls ->
-            ( { model | shuffle = Enabled <| List.indexedMap (\a b -> ( a, b )) ls }, Cmd.none )
+            let
+                updatedPlayer =
+                    model.player
+                     |> (\player -> { player | shuffle = Enabled <| List.indexedMap (\a b -> ( a, b )) ls })
+            in
+            ( { model | player = updatedPlayer }, Cmd.none )
 
         ToggleLoop b ->
-            ( { model | loop = b }, Cmd.none )
+            let
+                updatedPlayer =
+                    model.player
+                     |> (\player -> { player | loop = b  })
+            in
+            ( { model | player = updatedPlayer }, Cmd.none )
 
         ToggleShuffle b ->
             if b then
-                ( model, shuffleTracksList model.tracksList )
+                ( model, shuffleTracksList model.player.tracksList )
 
             else
-                ( { model | shuffle = Disabled }, Cmd.none )
+                let
+                    updatedPlayer =
+                        model.player
+                         |> (\player -> { player | shuffle = Disabled })
+                in
+                ( { model | player = updatedPlayer }, Cmd.none )
+
 
         SetTrack tr ->
             ( model, Ports.setTrack tr )
@@ -70,12 +96,12 @@ update msg model =
             ( model, Ports.pause () )
 
         Previous ->
-            case getCurrentTrack model.status of
+            case getCurrentTrack model.player.status of
                 Just tr ->
                     let
                         ls =
-                            getTheWorkingList model
-                                |> getTheFilteredList model.search
+                            getTheWorkingList model.player
+                                |> getTheFilteredList model.player.search
 
                         cmd =
                             setAnotherTrack ls -1 tr
@@ -86,12 +112,12 @@ update msg model =
                     ( model, Cmd.none )
 
         Next ->
-            case getCurrentTrack model.status of
+            case getCurrentTrack model.player.status of
                 Just tr ->
                     let
                         ls =
-                            getTheWorkingList model
-                                |> getTheFilteredList model.search
+                            getTheWorkingList model.player
+                                |> getTheFilteredList model.player.search
 
                         cmd =
                             setAnotherTrack ls 1 tr
@@ -104,9 +130,9 @@ update msg model =
         Play ->
             let
                 cmd =
-                    case model.status of
+                    case model.player.status of
                         Empty ->
-                            setTheFirstTrack model
+                            setTheFirstTrack model.player
 
                         Error int ->
                             Cmd.none
@@ -122,8 +148,8 @@ update msg model =
                     decodePlayerEvent pe
 
                 ls =
-                    getTheWorkingList model
-                        |> getTheFilteredList model.search
+                    getTheWorkingList model.player
+                        |> getTheFilteredList model.player.search
 
                 cmd =
                     case playerStatus of
@@ -132,7 +158,7 @@ update msg model =
 
                         Ended tr ->
                             if ls /= [] then
-                                if model.loop then
+                                if model.player.loop then
                                     setAnotherTrack ls 0 tr
 
                                 else
@@ -143,8 +169,13 @@ update msg model =
 
                         _ ->
                             Cmd.none
+
+                updatedPlayer =
+                      model.player
+                        |> (\player -> { player | status = playerStatus })
+
             in
-            ( { model | status = playerStatus }, cmd )
+            ( { model | player = updatedPlayer }, cmd )
 
         IncomingSocketMsg mess ->
             let
@@ -155,8 +186,11 @@ update msg model =
 
                         Err ls ->
                             []
+                updatedPlayer =
+                      model.player
+                        |> (\player -> { player | tracksList = x })
             in
-            ( { model | tracksList = x }, Cmd.none )
+            ( { model | player = updatedPlayer }, Cmd.none )
 
         Tick time ->
             let
@@ -194,6 +228,7 @@ getCurrentTrack ps =
             Nothing
 
 
+
 setAnotherTrack : List ( Int, TrackInfo ) -> Int -> String -> Cmd Msg
 setAnotherTrack ls direction tr =
     if List.length ls > 1 then
@@ -229,13 +264,13 @@ getAnotherTrack tr direction ls =
         |> .relativePath
 
 
-setTheFirstTrack : Model -> Cmd Msg
-setTheFirstTrack model =
-    if model.tracksList == [] then
+setTheFirstTrack : Player -> Cmd Msg
+setTheFirstTrack player =
+    if player.tracksList == [] then
         Cmd.none
 
     else
-        model.tracksList
+        player.tracksList
             |> List.head
             |> Maybe.withDefault ( 0, initTrackInfo )
             |> Tuple.second
@@ -243,11 +278,6 @@ setTheFirstTrack model =
             |> Ports.setTrack
 
 
-parsePath : String -> Maybe String
-parsePath tr =
-    tr
-        |> String.dropLeft 22
-        |> percentDecode
 
 
 getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
@@ -265,14 +295,14 @@ getTheFilteredList query ls =
         |> List.indexedMap (\a b -> ( a, b ))
 
 
-getTheWorkingList : Model -> List ( Int, TrackInfo )
-getTheWorkingList model =
-    case model.shuffle of
+getTheWorkingList : Player -> List ( Int, TrackInfo )
+getTheWorkingList player =
+    case player.shuffle of
         Enabled ls ->
             ls
 
         Disabled ->
-            model.tracksList
+            player.tracksList
 
 
 shuffleTracksList : List ( Int, TrackInfo ) -> Cmd Msg
