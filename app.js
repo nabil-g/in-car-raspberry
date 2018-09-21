@@ -7,15 +7,22 @@ const path = require('path');
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 
-let serverPort = 3000;
+let serverPort = 8082;
 
+app.use(express.static('static'));
 
-app.listen(serverPort, function () {
-    console.log('Example app listening on port 3000!')
-});
-
+app.use(express.static('dist'));
 
 app.use(express.static(musicDir));
+
+app.listen(serverPort, function () {
+    console.log(`App listening on port ${serverPort}!`);
+});
+
+app.get('/', function (req, res) {
+    res.sendFile('index.html');
+});
+
 
 io.on('connection', function (sock) {
     console.log('----------> one guy is connected !!!');

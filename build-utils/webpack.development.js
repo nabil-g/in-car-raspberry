@@ -25,21 +25,20 @@ module.exports = () => ({
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
 
-    new DashboardPlugin(),
   ],
 
   devServer: {
     contentBase: './src',
     historyApiFallback: true,
     inline: true,
-      stats: {
-
-          colors: true,
-          entrypoints: true,
-          timings: true,
-          version: false,
-          warnings: true,
-      },
+    stats: {
+      colors: true,
+      entrypoints: true,
+      timings: true,
+      version: false,
+      warnings: true,
+    },
     hot: true,
+    port: 3001
   }
 });

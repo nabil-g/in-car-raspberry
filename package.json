@@ -10,7 +10,7 @@
     "prod:compress": "npm run prod -- --env.presets compress",
     "devFront": "npm run webpack-dev-server -- --env.mode development",
     "start": "npm run devFront",
-    "build": "npm run prod",
+    "buildFront": "npm run prod",
     "elm-analyse": "elm-analyse -s -o",
     "preprod": "rimraf dist",
     "lint": "stylelint src/assets/styles",
