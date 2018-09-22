@@ -1,7 +1,6 @@
-const { Elm } = require('./elm/Main.elm');
+import { Elm }  from './elm/Main.elm';
 import io from 'socket.io-client';
-const socket = io('http://localhost:8090');
-
+const socket = io();
 
 let app = Elm.Main.init({});
 
@@ -16,7 +15,7 @@ socket.on('tracks', (msg) => {
 });
 
 audioPlayer.onended = function() {
-    console.log("The audio has ended");
+    myDebug("The audio has ended");
     app.ports.playerEvent.send({
         event: "ended",
         track: audioPlayer.src,
@@ -24,7 +23,7 @@ audioPlayer.onended = function() {
 };
 
 audioPlayer.onpause = function() {
-    console.log("The audio has been paused");
+    myDebug("The audio has been paused");
     app.ports.playerEvent.send({
         event: "paused",
         track: audioPlayer.src,
@@ -32,17 +31,15 @@ audioPlayer.onpause = function() {
 };
 
 audioPlayer.onplay = function() {
-    console.log("The audio is playing");
+    myDebug("The audio is playing");
     app.ports.playerEvent.send({
         event: "playing",
         track: audioPlayer.src,
     });
 };
 
-
-
 audioPlayer.ondurationchange = function () {
-    console.log("can play");
+    myDebug("can play");
     app.ports.playerEvent.send({
         event: "loaded",
         track: audioPlayer.src,
@@ -51,8 +48,8 @@ audioPlayer.ondurationchange = function () {
 
 
 audioPlayer.onerror = function () {
-    console.log("error");
-    console.log(audioPlayer.error.code);
+    myDebug("error");
+    myDebug(audioPlayer.error.code);
     app.ports.playerEvent.send({
         event: "error",
         track: audioPlayer.src,
@@ -64,9 +61,9 @@ audioPlayer.onerror = function () {
 // actionners
 
 app.ports.setTrack.subscribe(function (tr) {
-    // console.log(tr);
-    audioPlayer.src = 'http://localhost:3000/' + tr;
-    console.log(audioPlayer.src);
+    // myDebug(tr);
+    audioPlayer.src = tr;
+    myDebug(audioPlayer.src);
 });
 
 app.ports.pause.subscribe(function () {
@@ -76,3 +73,9 @@ app.ports.pause.subscribe(function () {
 app.ports.play.subscribe(function () {
     audioPlayer.play();
 });
+
+let myDebug = function (x) {
+    if (isDev) {
+        console.log(x);
+    }
+};

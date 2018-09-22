@@ -13,9 +13,6 @@ module.exports = ({ mode, presets } = { mode: "production", presets: [] }) => {
   return webpackMerge(
     {
       mode,
-        resolve: {
-
-        },
       module: {
         noParse: /\.elm$/,
         rules: [
@@ -27,17 +24,7 @@ module.exports = ({ mode, presets } = { mode: "production", presets: [] }) => {
       },
 
       plugins: [
-        new HtmlWebpackPlugin({
-          template: 'src/assets/index.html',
-          inject: 'body',
-          filename: 'index.html',
-        }),
-
-
-
         new StyleLintPlugin(),
-
-
       ]
     },
     modeConfig(mode),

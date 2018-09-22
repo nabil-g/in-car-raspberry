@@ -9,7 +9,7 @@ const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 
 module.exports = () => ({
   output: {
-    filename: '[name].[hash].js'
+    filename: '[name].js'
   },
 
   module: {

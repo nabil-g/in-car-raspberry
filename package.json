@@ -1,19 +1,19 @@
 {
-  "name": "inCarRaspberry-front",
+  "name": "inCarRaspberry",
   "version": "0.8.6",
   "license": "MIT",
   "scripts": {
     "webpack": "webpack",
     "webpack-dev-server": "webpack-dev-server",
-    "prod": "npm run webpack -- --env.mode production",
+    "buildFront": "npm run webpack -- --env.mode production",
     "prod:analyze": "npm run prod -- --env.presets analyze",
     "prod:compress": "npm run prod -- --env.presets compress",
-    "dev": "npm run webpack-dev-server -- --env.mode development",
-    "start": "npm run dev",
-    "build": "npm run prod",
     "elm-analyse": "elm-analyse -s -o",
     "preprod": "rimraf dist",
-    "lint": "stylelint src/assets/styles"
+    "lint": "stylelint src/assets/styles",
+    "devFront": "npm run webpack-dev-server -- --env.mode development",
+    "start": "nodemon app.js",
+    "devBack": "nodemon app.js dev"
   },
   "devDependencies": {
     "autoprefixer": "^9.1.0",
@@ -48,7 +48,10 @@
     "webpack-merge": "^4.1.4"
   },
   "dependencies": {
+    "music-metadata": "^2.4.3",
     "id3-parser": "^2.0.0",
-    "socket.io-client": "^2.1.1"
+    "express": "^4.16.3",
+    "socket.io-client": "^2.1.1",
+    "socket.io": "^2.1.1"
   }
 }
