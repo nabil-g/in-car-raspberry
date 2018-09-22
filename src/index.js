@@ -1,7 +1,6 @@
-const { Elm } = require('./elm/Main.elm');
+import { Elm }  from './elm/Main.elm';
 import io from 'socket.io-client';
-const socket = io('http://localhost:8090');
-
+const socket = io();
 
 let app = Elm.Main.init({});
 
@@ -39,8 +38,6 @@ audioPlayer.onplay = function() {
     });
 };
 
-
-
 audioPlayer.ondurationchange = function () {
     console.log("can play");
     app.ports.playerEvent.send({
@@ -65,7 +62,7 @@ audioPlayer.onerror = function () {
 
 app.ports.setTrack.subscribe(function (tr) {
     // console.log(tr);
-    audioPlayer.src = 'http://localhost:3000/' + tr;
+    audioPlayer.src = tr;
     console.log(audioPlayer.src);
 });
 

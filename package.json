@@ -5,16 +5,15 @@
   "scripts": {
     "webpack": "webpack",
     "webpack-dev-server": "webpack-dev-server",
-    "prod": "npm run webpack -- --env.mode production",
+    "buildFront": "npm run webpack -- --env.mode production",
     "prod:analyze": "npm run prod -- --env.presets analyze",
     "prod:compress": "npm run prod -- --env.presets compress",
-    "devFront": "npm run webpack-dev-server -- --env.mode development",
-    "start": "npm run devFront",
-    "buildFront": "npm run prod",
     "elm-analyse": "elm-analyse -s -o",
     "preprod": "rimraf dist",
     "lint": "stylelint src/assets/styles",
-    "devBack": "nodemon app.js"
+    "devFront": "npm run webpack-dev-server -- --env.mode development",
+    "start": "nodemon app.js",
+    "devBack": "nodemon app.js dev"
   },
   "devDependencies": {
     "autoprefixer": "^9.1.0",
