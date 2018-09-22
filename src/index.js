@@ -1,5 +1,8 @@
 import { Elm }  from './elm/Main.elm';
 import io from 'socket.io-client';
+import { parse } from 'id3-parser';
+import { fetchFileAsBuffer } from 'id3-parser/lib/universal/helpers';
+
 const socket = io();
 
 let app = Elm.Main.init({});
@@ -73,6 +76,29 @@ app.ports.pause.subscribe(function () {
 app.ports.play.subscribe(function () {
     audioPlayer.play();
 });
+
+
+app.ports.getMetadata.subscribe(function (tr) {
+    fetchFileAsBuffer(tr.relativePath).then(parse).then(tag => {
+        myDebug(tag);
+        if (tag.title) {
+            tr.title = tag.title;
+        }
+        if (tag.artist) {
+            tr.artist = tag.artist;
+        }
+        if (tag.album) {
+            tr.album = tag.album;
+        }
+        if (tag.image && tag.image.data) {
+            tr.picture = btoa(String.fromCharCode.apply(null,tag.image.data));
+        }
+        app.ports.enhancedTrack.send(tr);
+    });
+});
+
+
+
 
 let myDebug = function (x) {
     if (isDev) {

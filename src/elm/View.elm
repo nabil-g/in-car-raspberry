@@ -80,7 +80,7 @@ viewTrack ps ( num, tr ) =
     ( String.fromInt num
     , li
         [ style "cursor" "pointer"
-        , onClick <| SetTrack tr.relativePath
+        , onClick <| SetTrack tr
         , if currentTrack then
             style "color" "green"
 
