@@ -12,13 +12,13 @@ let serverPort = 8082;
 
 let index = isDev ? fs.readFileSync('static/indexDev.html') : fs.readFileSync('static/indexProd.html');
 
-
 app.use(express.static(musicDir));
 
 app.use(express.static('dist'));
 
-app.listen(serverPort, function () {
-    console.log(`App listening on port ${serverPort}!`);
+http.listen(serverPort, function () {
+    console.log(`App listening on port ${serverPort}`);
+    console.log(isDev ? "DEVELOPMENT MODE" : "PRODUCTION MODE");
 });
 
 app.get('/settings' , function (req, res) {
@@ -34,10 +34,6 @@ app.get('/', function (req, res) {
     res.set('Content-Type', 'text/html');
     res.send(index);
 });
-
-
-
-
 
 io.on('connection', function (sock) {
     myDebug(' one guy is connected !!!');
