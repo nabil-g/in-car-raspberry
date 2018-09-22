@@ -93,6 +93,7 @@ app.ports.getMetadata.subscribe(function (tr) {
         if (tag.image && tag.image.data) {
             tr.picture = btoa(String.fromCharCode.apply(null,tag.image.data));
         }
+        myDebug(tr);
         app.ports.enhancedTrack.send(tr);
     });
 });

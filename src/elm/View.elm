@@ -61,7 +61,8 @@ viewBody model =
 viewMedia : Player -> Html Msg
 viewMedia player =
     div []
-        [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
+        [ input [ type_ "text", placeholder "Rechercher", onInput Search, value player.search ] []
+        , button [ onClick ClearSearch ] [ text "Effacer" ]
         , viewPlayerToolbar player
         , HK.ul []
             (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)

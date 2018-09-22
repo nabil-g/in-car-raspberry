@@ -28,11 +28,20 @@ type Msg
     | Search String
     | UrlChanged Url.Url
     | LinkClicked Browser.UrlRequest
+    | ClearSearch
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ClearSearch ->
+            let
+                updatedPlayer =
+                    model.player
+                        |> (\player -> { player | search = "" })
+            in
+            ( { model | player = updatedPlayer }, Cmd.none )
+
         GotAnEnhancedTrack val ->
             let
                 newTracksList =
