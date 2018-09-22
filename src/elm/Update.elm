@@ -13,7 +13,7 @@ import Url exposing (Url)
 
 type Msg
     = IncomingSocketMsg String
-    | SetTrack String
+    | SetTrack TrackInfo
     | Play
     | Pause
     | Previous
@@ -24,6 +24,7 @@ type Msg
     | ToggleLoop Bool
     | ToggleShuffle Bool
     | GotAShuffleList (List TrackInfo)
+    | GotAnEnhancedTrack D.Value
     | Search String
     | UrlChanged Url.Url
     | LinkClicked Browser.UrlRequest
@@ -32,6 +33,30 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotAnEnhancedTrack val ->
+            let
+                newTracksList =
+                    case D.decodeValue trackDecoder val of
+                        Ok tr ->
+                            model.player.tracksList
+                                |> List.map
+                                    (\( a1, a2 ) ->
+                                        if a2.filename == tr.filename && a2.relativePath == tr.relativePath then
+                                            ( a1, tr )
+
+                                        else
+                                            ( a1, a2 )
+                                    )
+
+                        Err e ->
+                            model.player.tracksList
+
+                updatedPlayer =
+                    model.player
+                        |> (\player -> { player | tracksList = newTracksList })
+            in
+            ( { model | player = updatedPlayer }, Cmd.none )
+
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
@@ -88,7 +113,7 @@ update msg model =
                 ( { model | player = updatedPlayer }, Cmd.none )
 
         SetTrack tr ->
-            ( model, Ports.setTrack tr )
+            ( model, setTrack tr )
 
         Pause ->
             ( model, Ports.pause () )
@@ -231,14 +256,13 @@ setAnotherTrack ls direction tr =
     if List.length ls > 1 then
         ls
             |> getAnotherTrack tr direction
-            |> Debug.log "new track is : "
-            |> Ports.setTrack
+            |> setTrack
 
     else
         Cmd.none
 
 
-getAnotherTrack : String -> Int -> List ( Int, TrackInfo ) -> String
+getAnotherTrack : String -> Int -> List ( Int, TrackInfo ) -> TrackInfo
 getAnotherTrack tr direction ls =
     let
         parsedTr =
@@ -258,7 +282,6 @@ getAnotherTrack tr direction ls =
         |> List.map (\tup -> Tuple.second tup)
         |> List.head
         |> Maybe.withDefault initTrackInfo
-        |> .relativePath
 
 
 setTheFirstTrack : Player -> Cmd Msg
@@ -271,8 +294,24 @@ setTheFirstTrack player =
             |> List.head
             |> Maybe.withDefault ( 0, initTrackInfo )
             |> Tuple.second
-            |> .relativePath
-            |> Ports.setTrack
+            |> setTrack
+
+
+setTrack : TrackInfo -> Cmd Msg
+setTrack tr =
+    Cmd.batch
+        [ tr |> .relativePath |> Ports.setTrack
+        , if isTrackAlreadyFetched tr then
+            Cmd.none
+
+          else
+            Ports.getMetadata tr
+        ]
+
+
+isTrackAlreadyFetched : TrackInfo -> Bool
+isTrackAlreadyFetched tr =
+    tr.artist /= Nothing || tr.album /= Nothing || tr.title /= Nothing || tr.picture /= Nothing
 
 
 getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
@@ -314,4 +353,5 @@ subscriptions m =
         [ Ports.incomingSocketMsg IncomingSocketMsg
         , Ports.playerEvent PlayerEvent
         , Time.every 60000 Tick
+        , Ports.enhancedTrack GotAnEnhancedTrack
         ]

@@ -1,6 +1,5 @@
 const express = require('express');
 const app = express();
-const mm = require('music-metadata');
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const fs = require('fs');
@@ -36,29 +35,15 @@ app.get('/', function (req, res) {
 });
 
 io.on('connection', function (sock) {
-    myDebug(' one guy is connected !!!');
+    myDebug(' one guy is connected through the socket!!!');
 
     fs.readdir(musicDir, function (err, files)  {
         let tracksList = [];
 
-        files.filter(filterExtension).forEach((file, index, arr) => {
-
-            // tracksList.push(file);
-            mm.parseFile(musicDir + '/' + file, {native: true})
-                .then(metadata => {
-                    let augmentedTrack = getInfo(file, metadata);
-                    tracksList.push(augmentedTrack);
-                    if (tracksList.length === arr.length) {
-                        io.emit('tracks',JSON.stringify(tracksList));
-                        // myDebug(tracksList);
-                    }
-                })
-                .catch( err => {
-                    console.error(err.message);
-                });
+        files.filter(filterExtension).forEach(file => {
+            tracksList.push(getInfo(file));
         });
-        // io.emit('tracks',JSON.stringify(tracksList));
-        // myDebug(tracksList);
+        io.emit('tracks',JSON.stringify(tracksList));
 
         if (err) {
             myDebug(err);
@@ -75,19 +60,13 @@ let filterExtension = function (element) {
 };
 
 
-let getInfo = function (file, md ) {
-    md.common.relativePath = file;
-    md.common.filename = path.basename(file);
-    if (md.common.picture) {
-       md.common.picture = artworkToBase64(md.common.picture[0].data);
-    }
-    return md.common;
+let getInfo = function (file) {
+    return {
+        relativePath: file,
+        filename: path.basename(file)
+    };
 };
 
-let artworkToBase64 = function (req) {
-    let data =  new Buffer(req);
-    return data.toString('base64');
-};
 
 let myDebug = function (x) {
     if (isDev) {

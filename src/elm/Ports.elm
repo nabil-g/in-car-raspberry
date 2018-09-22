@@ -1,6 +1,7 @@
-port module Ports exposing (incomingSocketMsg, pause, play, playerEvent, setTrack)
+port module Ports exposing (enhancedTrack, getMetadata, incomingSocketMsg, pause, play, playerEvent, setTrack)
 
 import Json.Decode exposing (Value)
+import Model exposing (TrackInfo)
 
 
 
@@ -11,6 +12,9 @@ port playerEvent : (Value -> msg) -> Sub msg
 
 
 port incomingSocketMsg : (String -> msg) -> Sub msg
+
+
+port enhancedTrack : (Value -> msg) -> Sub msg
 
 
 
@@ -24,3 +28,6 @@ port pause : () -> Cmd msg
 
 
 port play : () -> Cmd msg
+
+
+port getMetadata : TrackInfo -> Cmd msg
