@@ -49,12 +49,12 @@ viewBody model =
             [ a [ href "/media", style "margin-right" "10px" ] [ text "Audio" ]
             , a [ href "/settings" ] [ text "Réglages" ]
             ]
-        , currentPage
         , div []
             [ text <| format <| Time.toHour zone ct
             , text ":"
             , text <| format <| Time.toMinute zone ct
             ]
+        , currentPage
         ]
 
 
@@ -62,9 +62,9 @@ viewMedia : Player -> Html Msg
 viewMedia player =
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
+        , viewPlayerToolbar player
         , HK.ul []
             (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)
-        , viewPlayerToolbar player
         ]
 
 
@@ -78,14 +78,16 @@ viewTrack ps ( num, tr ) =
                 |> (==) tr.relativePath
     in
     ( String.fromInt num
-    , li [ style "cursor" "pointer", onClick <| SetTrack tr.relativePath ]
-        [ text tr.filename
+    , li
+        [ style "cursor" "pointer"
+        , onClick <| SetTrack tr.relativePath
         , if currentTrack then
-            text "  -  En écoute"
+            style "color" "green"
 
           else
-            text ""
+            class ""
         ]
+        [ text tr.filename ]
     )
 
 
@@ -141,6 +143,7 @@ viewPlayerToolbar player =
         , button [ onClick <| ToggleShuffle shuffleMsg, disabled disableOnError ]
             [ text shuffleTxt
             ]
+        , text <| String.fromInt <| List.length player.tracksList
         , status
         ]
 
