@@ -5,6 +5,7 @@ const io = require('socket.io')(http);
 const fs = require('fs');
 const path = require('path');
 const glob = require('glob');
+const mm = require('music-metadata');
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 let isDev = process.argv[2] === "dev";
@@ -44,6 +45,20 @@ io.on('connection', function (sock) {
             myDebug(err);
         }
     });
+
+
+    sock.on('metadataRequest',function (tr) {
+        tr = JSON.parse(tr);
+        mm.parseFile(musicDir + '/' + (tr.relativePath), {native: true})
+            .then(metadata => {
+                let augmentedTrack = getMetadata(tr, metadata);
+                io.emit('parsedTrack',JSON.stringify(augmentedTrack));
+            })
+            .catch( err => {
+                console.error(err.message);
+            });
+    });
+
 });
 
 
@@ -54,12 +69,36 @@ let filterExtension = function (element) {
     return (extName === '.mp3' || extName === '.wav' || extName === '.ogg') && !excluded ;
 };
 
-
 let getInfo = function (file) {
     return {
         relativePath: file,
         filename: path.basename(file)
     };
+};
+
+let getMetadata = function (tr, md ) {
+    if (md.common) {
+        if (md.common.title) {
+            tr.title = md.common.title;
+        }
+        if (md.common.artist) {
+            tr.artist = md.common.artist;
+        }
+        if (md.common.album) {
+            tr.album = md.common.album;
+        }
+        if (md.common.picture) {
+            tr.picture = artworkToBase64(md.common.picture[0].data);
+        }
+    }
+    return tr;
+};
+
+
+
+let artworkToBase64 = function (req) {
+    let data =  new Buffer(req);
+    return data.toString('base64');
 };
 
 

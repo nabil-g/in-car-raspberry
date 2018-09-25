@@ -1,7 +1,5 @@
 import { Elm }  from './elm/Main.elm';
 import io from 'socket.io-client';
-import { parse } from 'id3-parser';
-import { fetchFileAsBuffer } from 'id3-parser/lib/universal/helpers';
 
 const socket = io();
 
@@ -15,6 +13,10 @@ window.ap = audioPlayer;
 
 socket.on('tracks', (msg) => {
     app.ports.incomingSocketMsg.send(msg);
+});
+
+socket.on('parsedTrack', (tr) => {
+    app.ports.enhancedTrack.send(JSON.parse(tr));
 });
 
 audioPlayer.onended = function() {
@@ -64,7 +66,6 @@ audioPlayer.onerror = function () {
 // actionners
 
 app.ports.setTrack.subscribe(function (tr) {
-    // myDebug(tr);
     audioPlayer.src = tr;
     myDebug(audioPlayer.src);
 });
@@ -79,25 +80,8 @@ app.ports.play.subscribe(function () {
 
 
 app.ports.getMetadata.subscribe(function (tr) {
-    fetchFileAsBuffer(tr.relativePath).then(parse).then(tag => {
-        myDebug(tag);
-        if (tag.title) {
-            tr.title = tag.title;
-        }
-        if (tag.artist) {
-            tr.artist = tag.artist;
-        }
-        if (tag.album) {
-            tr.album = tag.album;
-        }
-        if (tag.image && tag.image.data) {
-            tr.picture = btoa(String.fromCharCode.apply(null,tag.image.data));
-        }
-        myDebug(tr);
-        app.ports.enhancedTrack.send(tr);
-    });
+    socket.emit('metadataRequest', JSON.stringify(tr));
 });
-
 
 
 
