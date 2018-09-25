@@ -4,6 +4,7 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const fs = require('fs');
 const path = require('path');
+const glob = require('glob');
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 let isDev = process.argv[2] === "dev";
@@ -30,7 +31,8 @@ app.get('*', function (req, res) {
 io.on('connection', function (sock) {
     myDebug(' one guy is connected through the socket!!!');
 
-    fs.readdir(musicDir, function (err, files)  {
+    glob("**", {cwd: musicDir},function (err, files) {
+
         let tracksList = [];
 
         files.filter(filterExtension).forEach(file => {
