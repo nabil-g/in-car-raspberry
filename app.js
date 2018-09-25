@@ -7,7 +7,11 @@ const path = require('path');
 const glob = require('glob');
 const mm = require('music-metadata');
 var md5 = require('md5');
+var usbDetect = require('usb-detection');
 
+usbDetect.startMonitoring();
+
+usbDetect.on('change', function(device) { console.log('change', device); });
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 let isDev = process.argv[2] === "dev";
