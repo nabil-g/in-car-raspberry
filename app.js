@@ -20,15 +20,8 @@ http.listen(serverPort, function () {
     console.log(isDev ? "DEVELOPMENT MODE" : "PRODUCTION MODE");
 });
 
-app.get('/settings' , function (req, res) {
-    res.redirect('/');
-});
 
-app.get('/media' , function (req, res) {
-    res.redirect('/');
-});
-
-app.get('/', function (req, res) {
+app.get('*', function (req, res) {
     myDebug(req.method + " " + req.originalUrl);
     res.set('Content-Type', 'text/html');
     res.send(index);
@@ -55,7 +48,7 @@ io.on('connection', function (sock) {
 
 let filterExtension = function (element) {
     let extName = path.extname(element);
-    let excluded = element.startsWith('#');
+    let excluded = element.includes('#');
     return (extName === '.mp3' || extName === '.wav' || extName === '.ogg') && !excluded ;
 };
 
