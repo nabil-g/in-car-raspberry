@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const glob = require('glob');
 const mm = require('music-metadata');
+var md5 = require('md5');
+
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 let isDev = process.argv[2] === "dev";
@@ -15,6 +17,7 @@ let index = isDev ? fs.readFileSync('static/indexDev.html') : fs.readFileSync('s
 
 app.use(express.static(musicDir));
 
+app.use(express.static('artworks'));
 app.use(express.static('dist'));
 
 http.listen(serverPort, function () {
@@ -98,8 +101,17 @@ let getMetadata = function (tr, md ) {
 
 let artworkToBase64 = function (req) {
     let data =  new Buffer(req);
-    return data.toString('base64');
+    let hash = md5(data);
+    console.log(md5(data));
+    fs.writeFile(`artworks/${hash}.jpg`, data, 'binary', function (err) {
+        if (err) {
+            console.log("There was an error writing the image " + hash);
+        }
+    });
+    return (hash + ".jpg");
 };
+
+
 
 
 let myDebug = function (x) {
