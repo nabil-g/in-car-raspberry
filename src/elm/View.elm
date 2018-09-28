@@ -157,7 +157,7 @@ displayCurrentTrack tri =
         , p [] [ text <| Maybe.withDefault "" tri.album ]
         , case tri.picture of
             Just pic ->
-                img [ src <| "data:image/png;base64," ++ pic ] []
+                img [ src pic ] []
 
             Nothing ->
                 text ""

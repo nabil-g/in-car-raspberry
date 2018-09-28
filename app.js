@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
 const glob = require('glob');
 const mm = require('music-metadata');
@@ -91,7 +91,7 @@ let getMetadata = function (tr, md ) {
             tr.album = md.common.album;
         }
         if (md.common.picture) {
-            tr.picture = artworkToBase64(md.common.picture[0].data);
+            tr.picture = saveArtwork(md.common.picture[0].data);
         }
     }
     return tr;
@@ -99,16 +99,19 @@ let getMetadata = function (tr, md ) {
 
 
 
-let artworkToBase64 = function (req) {
-    let data =  new Buffer(req);
-    let hash = md5(data);
-    console.log(md5(data));
-    fs.writeFile(`artworks/${hash}.jpg`, data, 'binary', function (err) {
-        if (err) {
-            console.log("There was an error writing the image " + hash);
-        }
-    });
-    return (hash + ".jpg");
+let saveArtwork = function (req) {
+    let hash = md5(req);
+    let filename = hash + ".jpg";
+    fs.ensureDirSync('artworks');
+    let files = fs.readdirSync('artworks');
+    if (!files.includes(filename)) {
+        fs.outputFile(`artworks/${hash}.jpg`, req, 'binary', function (err) {
+            if (err) {
+                console.log("There was an error writing the image " + filename);
+            }
+        });
+    }
+    return filename;
 };
 
 
