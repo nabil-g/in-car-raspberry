@@ -25,23 +25,10 @@ wss.on('connection', function (ws) {
     fs.readdir(musicDir, function (err, files)  {
         let tracksList = [];
 
-        files.filter(filterExtension).forEach((file, index, arr) => {
-
-            // tracksList.push(file);
-            mm.parseFile(musicDir + '/' + file, {native: true})
-                .then(metadata => {
-                    let augmentedTrack = getInfo(file, metadata);
-                    tracksList.push(augmentedTrack);
-                    if (tracksList.length === arr.length) {
-                        ws.send(JSON.stringify(tracksList));
-                        // console.log(tracksList);
-                    }
-                })
-                .catch( err => {
-                    console.error(err.message);
-                });
+        files.filter(filterExtension).forEach(file => {
+            tracksList.push(file);
         });
-        // ws.send(JSON.stringify(tracksList));
+        ws.send(JSON.stringify(tracksList));
         // console.log(tracksList);
 
         if (err) {
@@ -59,16 +46,3 @@ let filterExtension = function (element) {
 };
 
 
-let getInfo = function (file, md ) {
-    md.common.relativePath = file;
-    md.common.filename = path.basename(file);
-    if (md.common.picture) {
-       md.common.picture = artworkToBase64(md.common.picture[0].data);
-    }
-    return md.common;
-};
-
-let artworkToBase64 = function (req) {
-    let data =  new Buffer(req);
-    return data.toString('base64');
-};

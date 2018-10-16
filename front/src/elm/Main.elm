@@ -1,4 +1,4 @@
-module Main exposing (..)
+module Main exposing (Base64, Model, Msg(..), PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Track, decodePlayerEvent, displayCurrentTrack, getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, getTrackInfo, initialModel, main, parseCurrentTrack, setAnotherTrack, setTheFirstTrack, shuffleTracksList, socketPath, subscriptions, update, view, viewPlayerToolbar, viewTrack)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -16,6 +16,7 @@ import Time.Format exposing (format)
 import WebSocket
 
 
+
 -- APP
 
 
@@ -29,7 +30,7 @@ main =
 
 
 type alias Model =
-    { tracksList : List ( Int, TrackInfo )
+    { tracksList : List ( Int, Track )
     , status : PlayerStatus
     , clock : Time
     , loop : Bool
@@ -39,7 +40,7 @@ type alias Model =
 
 
 type Randomness
-    = Enabled (List ( Int, TrackInfo ))
+    = Enabled (List ( Int, Track ))
     | Disabled
 
 
@@ -98,40 +99,12 @@ decodePlayerEvent val =
         |> Result.withDefault Unknown
 
 
-type alias TrackInfo =
-    { relativePath : String
-    , filename : String
-    , title : Maybe String
-    , artist : Maybe String
-    , album : Maybe String
-    , picture : Maybe Base64
-    }
-
-
-initTrackInfo : TrackInfo
-initTrackInfo =
-    { relativePath = ""
-    , filename = ""
-    , title = Nothing
-    , artist = Nothing
-    , album = Nothing
-    , picture = Nothing
-    }
+type alias Track =
+    String
 
 
 type alias Base64 =
     String
-
-
-trackDecoder : D.Decoder TrackInfo
-trackDecoder =
-    decode TrackInfo
-        |> P.required "relativePath" D.string
-        |> P.required "filename" D.string
-        |> optional "title" (D.nullable D.string) Nothing
-        |> optional "artist" (D.nullable D.string) Nothing
-        |> optional "album" (D.nullable D.string) Nothing
-        |> optional "picture" (D.nullable D.string) Nothing
 
 
 initialModel : Model
@@ -165,7 +138,7 @@ type Msg
     | Tick Time
     | ToggleLoop Bool
     | ToggleShuffle Bool
-    | GotAShuffleList (List TrackInfo)
+    | GotAShuffleList (List Track)
     | Search String
 
 
@@ -184,6 +157,7 @@ update msg model =
         ToggleShuffle b ->
             if b then
                 ( model, shuffleTracksList model.tracksList )
+
             else
                 ( { model | shuffle = Disabled }, Cmd.none )
 
@@ -258,8 +232,10 @@ update msg model =
                             if ls /= [] then
                                 if model.loop then
                                     setAnotherTrack ls 0 tr
+
                                 else
                                     setAnotherTrack ls 1 tr
+
                             else
                                 Cmd.none
 
@@ -271,7 +247,7 @@ update msg model =
         IncomingSocketMsg mess ->
             let
                 x =
-                    case D.decodeString (D.list trackDecoder) mess of
+                    case D.decodeString (D.list D.string) mess of
                         Ok ls ->
                             ls |> List.indexedMap (,)
 
@@ -303,26 +279,27 @@ getCurrentTrack ps =
             Nothing
 
 
-setAnotherTrack : List ( Int, TrackInfo ) -> Int -> String -> Cmd Msg
+setAnotherTrack : List ( Int, Track ) -> Int -> String -> Cmd Msg
 setAnotherTrack ls direction tr =
     if List.length ls > 1 then
         ls
             |> getAnotherTrack tr direction
             |> Debug.log "new track is : "
             |> Ports.setTrack
+
     else
         Cmd.none
 
 
-getAnotherTrack : String -> Int -> List ( Int, TrackInfo ) -> String
+getAnotherTrack : String -> Int -> List ( Int, Track ) -> String
 getAnotherTrack tr direction ls =
     let
         parsedTr =
             Maybe.withDefault "" <| parseCurrentTrack tr
 
         curindex =
-            List.filter (\tup -> .relativePath (Tuple.second tup) == parsedTr) ls
-                |> List.map (\tup -> Tuple.first tup)
+            List.filter (\( a1, a2 ) -> a2 == parsedTr) ls
+                |> List.map (\( a1, a2 ) -> a1)
                 |> List.head
                 |> Maybe.withDefault 0
 
@@ -333,20 +310,19 @@ getAnotherTrack tr direction ls =
         |> List.filter (\tup -> Tuple.first tup == nextTrackIndex)
         |> List.map (\tup -> Tuple.second tup)
         |> List.head
-        |> Maybe.withDefault initTrackInfo
-        |> .relativePath
+        |> Maybe.withDefault ""
 
 
 setTheFirstTrack : Model -> Cmd Msg
 setTheFirstTrack model =
     if model.tracksList == [] then
         Cmd.none
+
     else
         model.tracksList
             |> List.head
-            |> Maybe.withDefault ( 0, initTrackInfo )
+            |> Maybe.withDefault ( 0, "" )
             |> Tuple.second
-            |> .relativePath
             |> Ports.setTrack
 
 
@@ -357,14 +333,11 @@ parseCurrentTrack tr =
         |> decodeUri
 
 
-getTheFilteredList : String -> List ( Int, TrackInfo ) -> List ( Int, TrackInfo )
+getTheFilteredList : String -> List ( Int, Track ) -> List ( Int, Track )
 getTheFilteredList query ls =
     let
         filteringFunc el =
-            (String.contains query <| String.toLower el.filename)
-                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.title)
-                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.artist)
-                || (String.contains query <| String.toLower <| Maybe.withDefault "" el.album)
+            String.contains query <| String.toLower el
     in
     ls
         |> List.map (\element -> Tuple.second element)
@@ -372,7 +345,7 @@ getTheFilteredList query ls =
         |> List.indexedMap (,)
 
 
-getTheWorkingList : Model -> List ( Int, TrackInfo )
+getTheWorkingList : Model -> List ( Int, Track )
 getTheWorkingList model =
     case model.shuffle of
         Enabled ls ->
@@ -414,21 +387,22 @@ view model =
         ]
 
 
-viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Html Msg )
+viewTrack : PlayerStatus -> ( Int, Track ) -> ( String, Html Msg )
 viewTrack ps ( num, tr ) =
     let
         currentTrack =
             getCurrentTrack ps
                 |> Maybe.andThen parseCurrentTrack
                 |> Maybe.withDefault ""
-                |> (==) tr.relativePath
+                |> (==) tr
     in
     ( toString num
     , li []
-        [ a [ href "#", onClick <| SetTrack tr.relativePath ]
-            [ text tr.filename
+        [ a [ href "#", onClick <| SetTrack tr ]
+            [ text tr
             , if currentTrack then
                 text "  -  En écoute"
+
               else
                 text ""
             ]
@@ -470,6 +444,7 @@ viewPlayerToolbar model =
         ( shuffleMsg, shuffleTxt ) =
             if model.shuffle == Disabled then
                 ( True, "Activer le mode aléatoire" )
+
             else
                 ( False, "Désactiver le mode aléatoire" )
     in
@@ -480,6 +455,7 @@ viewPlayerToolbar model =
         , button [ onClick <| ToggleLoop <| not model.loop, disabled disableOnError, style [ ( "margin-left", "10px" ) ] ]
             [ if model.loop then
                 text "Désactiver la répétition"
+
               else
                 text "Activer la répétition"
             ]
@@ -490,7 +466,7 @@ viewPlayerToolbar model =
         ]
 
 
-shuffleTracksList : List ( Int, TrackInfo ) -> Cmd Msg
+shuffleTracksList : List ( Int, Track ) -> Cmd Msg
 shuffleTracksList ls =
     ls
         |> List.map (\el -> Tuple.second el)
@@ -498,25 +474,17 @@ shuffleTracksList ls =
         |> generate GotAShuffleList
 
 
-displayCurrentTrack : TrackInfo -> Html Msg
+displayCurrentTrack : Track -> Html Msg
 displayCurrentTrack tri =
     div []
-        [ p [] [ text <| Maybe.withDefault tri.filename tri.title ]
-        , p [] [ text <| Maybe.withDefault "" tri.artist ]
-        , p [] [ text <| Maybe.withDefault "" tri.album ]
-        , case tri.picture of
-            Just pic ->
-                img [ src <| "data:image/png;base64," ++ pic ] []
-
-            Nothing ->
-                text ""
+        [ p [] [ text tri ]
         ]
 
 
-getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo
+getTrackInfo : List ( Int, Track ) -> PlayingPath -> Track
 getTrackInfo ls tr =
     ls
         |> List.map (\tup -> Tuple.second tup)
-        |> List.filter (\el -> el.relativePath == tr)
+        |> List.filter (\el -> el == tr)
         |> List.head
-        |> Maybe.withDefault initTrackInfo
+        |> Maybe.withDefault ""
