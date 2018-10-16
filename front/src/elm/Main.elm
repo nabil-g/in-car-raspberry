@@ -1,4 +1,4 @@
-module Main exposing (Base64, Model, Msg(..), PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Track, decodePlayerEvent, displayCurrentTrack, getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, getTrackInfo, initialModel, main, parseCurrentTrack, setAnotherTrack, setTheFirstTrack, shuffleTracksList, socketPath, subscriptions, update, view, viewPlayerToolbar, viewTrack)
+module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -8,13 +8,10 @@ import Http exposing (decodeUri)
 import Json.Decode as D
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Ports
-import Random exposing (generate)
-import Random.List exposing (shuffle)
 import Task
 import Time exposing (Time, every, inHours, inMinutes, minute, now)
 import Time.Format exposing (format)
 import WebSocket
-
 
 
 -- APP
@@ -33,8 +30,6 @@ type alias Model =
     { tracksList : List ( Int, Track )
     , status : PlayerStatus
     , clock : Time
-    , loop : Bool
-    , shuffle : Randomness
     , search : String
     }
 
@@ -112,8 +107,6 @@ initialModel =
     { tracksList = []
     , status = Empty
     , clock = 0
-    , loop = False
-    , shuffle = Disabled
     , search = ""
     }
 
@@ -136,9 +129,6 @@ type Msg
     | Next
     | PlayerEvent D.Value
     | Tick Time
-    | ToggleLoop Bool
-    | ToggleShuffle Bool
-    | GotAShuffleList (List Track)
     | Search String
 
 
@@ -146,20 +136,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Search s ->
-            ( { model | search = String.toLower s }, Cmd.none )
-
-        GotAShuffleList ls ->
-            ( { model | shuffle = Enabled <| List.indexedMap (,) ls }, Cmd.none )
-
-        ToggleLoop b ->
-            ( { model | loop = b }, Cmd.none )
-
-        ToggleShuffle b ->
-            if b then
-                ( model, shuffleTracksList model.tracksList )
-
-            else
-                ( { model | shuffle = Disabled }, Cmd.none )
+            let
+                debug =
+                    Debug.log "voici ma recherche" s
+            in
+            ( model, Cmd.none )
 
         SetTrack tr ->
             ( model, Ports.setTrack tr )
@@ -172,8 +153,7 @@ update msg model =
                 Just tr ->
                     let
                         ls =
-                            getTheWorkingList model
-                                |> getTheFilteredList model.search
+                            getTheFilteredList model.search model.tracksList
 
                         cmd =
                             setAnotherTrack ls -1 tr
@@ -188,8 +168,7 @@ update msg model =
                 Just tr ->
                     let
                         ls =
-                            getTheWorkingList model
-                                |> getTheFilteredList model.search
+                            getTheFilteredList model.search model.tracksList
 
                         cmd =
                             setAnotherTrack ls 1 tr
@@ -220,8 +199,7 @@ update msg model =
                     decodePlayerEvent pe
 
                 ls =
-                    getTheWorkingList model
-                        |> getTheFilteredList model.search
+                    getTheFilteredList model.search model.tracksList
 
                 cmd =
                     case playerStatus of
@@ -230,12 +208,7 @@ update msg model =
 
                         Ended tr ->
                             if ls /= [] then
-                                if model.loop then
-                                    setAnotherTrack ls 0 tr
-
-                                else
-                                    setAnotherTrack ls 1 tr
-
+                                setAnotherTrack ls 1 tr
                             else
                                 Cmd.none
 
@@ -286,7 +259,6 @@ setAnotherTrack ls direction tr =
             |> getAnotherTrack tr direction
             |> Debug.log "new track is : "
             |> Ports.setTrack
-
     else
         Cmd.none
 
@@ -317,7 +289,6 @@ setTheFirstTrack : Model -> Cmd Msg
 setTheFirstTrack model =
     if model.tracksList == [] then
         Cmd.none
-
     else
         model.tracksList
             |> List.head
@@ -338,24 +309,28 @@ getTheFilteredList query ls =
     let
         filteringFunc el =
             String.contains query <| String.toLower el
+
+        tracks =
+            List.map (\element -> Tuple.second element) ls
+
+        -- equivalent à foreach
+        filteredList =
+            List.filter filteringFunc tracks
     in
-    ls
-        |> List.map (\element -> Tuple.second element)
-        |> List.filter filteringFunc
-        |> List.indexedMap (,)
-
-
-getTheWorkingList : Model -> List ( Int, Track )
-getTheWorkingList model =
-    case model.shuffle of
-        Enabled ls ->
-            ls
-
-        Disabled ->
-            model.tracksList
+    List.indexedMap (\index el -> ( index, el )) filteredList
 
 
 
+--getTheFilteredList : String -> List ( Int, Track ) -> List ( Int, Track )
+--getTheFilteredList query ls =
+--    let
+--        filteringFunc el =
+--            String.contains query <| String.toLower el
+--    in
+--    ls
+--        |> List.map (\element -> Tuple.second element)
+--        |> List.filter filteringFunc
+--        |> List.indexedMap (,)
 -- SUBSCRIPTIONS
 
 
@@ -374,16 +349,20 @@ subscriptions m =
 
 view : Model -> Html Msg
 view model =
+    let
+        filteredList =
+            getTheFilteredList model.search model.tracksList
+    in
     div []
         [ input [ type_ "text", placeholder "Rechercher", onInput Search ] []
-        , HK.ul []
-            (List.map (viewTrack model.status) <| getTheFilteredList model.search model.tracksList)
-        , viewPlayerToolbar model
-        , div []
+        , span []
             [ text <| format "%H" model.clock
             , text <| ":"
             , text <| format "%M" model.clock
             ]
+        , HK.ul []
+            (List.map (viewTrack model.status) filteredList)
+        , viewPlayerToolbar model
         ]
 
 
@@ -402,7 +381,6 @@ viewTrack ps ( num, tr ) =
             [ text tr
             , if currentTrack then
                 text "  -  En écoute"
-
               else
                 text ""
             ]
@@ -440,38 +418,13 @@ viewPlayerToolbar model =
 
                 _ ->
                     False
-
-        ( shuffleMsg, shuffleTxt ) =
-            if model.shuffle == Disabled then
-                ( True, "Activer le mode aléatoire" )
-
-            else
-                ( False, "Désactiver le mode aléatoire" )
     in
     div []
         [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
         , button [ onClick buttonMsg, disabled disableOnError ] [ text buttonTxt ]
         , button [ onClick Next, disabled disableOnError ] [ text "Suiv" ]
-        , button [ onClick <| ToggleLoop <| not model.loop, disabled disableOnError, style [ ( "margin-left", "10px" ) ] ]
-            [ if model.loop then
-                text "Désactiver la répétition"
-
-              else
-                text "Activer la répétition"
-            ]
-        , button [ onClick <| ToggleShuffle shuffleMsg, disabled disableOnError ]
-            [ text shuffleTxt
-            ]
         , status
         ]
-
-
-shuffleTracksList : List ( Int, Track ) -> Cmd Msg
-shuffleTracksList ls =
-    ls
-        |> List.map (\el -> Tuple.second el)
-        |> shuffle
-        |> generate GotAShuffleList
 
 
 displayCurrentTrack : Track -> Html Msg
@@ -488,3 +441,4 @@ getTrackInfo ls tr =
         |> List.filter (\el -> el == tr)
         |> List.head
         |> Maybe.withDefault ""
+            ( { model | search = String.toLower s }, Cmd.none )
