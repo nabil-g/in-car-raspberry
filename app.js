@@ -6,12 +6,32 @@ const fs = require('fs-extra');
 const path = require('path');
 const glob = require('glob');
 const mm = require('music-metadata');
-var md5 = require('md5');
-var usbDetect = require('usb-detection');
+const md5 = require('md5');
+const usbDetect = require('usb-detection');
+const drivelist = require('drivelist');
+
+
 
 usbDetect.startMonitoring();
 
-usbDetect.on('change', function(device) { console.log('change', device); });
+// usbDetect.on('add', function(device) {
+//     console.log('change', device);
+//     setTimeout(() => {
+        drivelist.list((error, drives) => {
+            if (error) {
+                throw error;
+            }
+            let usbDevices = drives.filter(function (dr) {
+                return dr.isUSB;
+            });
+
+            if (usbDevices.length > 0) {
+                console.log(usbDevices[0].mountpoints[0].path);
+            }
+        });
+//     }, 2000 );
+// });
+
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
 let isDev = process.argv[2] === "dev";
@@ -112,7 +132,7 @@ let saveArtwork = function (req) {
         fs.outputFile(`artworks/${hash}.jpg`, req, 'binary', function (err) {
             if (err) {
                 console.log("There was an error writing the image " + filename);
-            }
+             }
         });
     }
     return filename;
