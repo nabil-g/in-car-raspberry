@@ -1,6 +1,7 @@
 module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
+import Element exposing (Element, column, el, layout, none, row)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -13,11 +14,11 @@ import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
 view : Model -> Document Msg
 view model =
     { title = "InCarRaspberry"
-    , body = [ viewBody model ]
+    , body = [ Element.layout [] <| viewBody model ]
     }
 
 
-viewBody : Model -> Html Msg
+viewBody : Model -> Element Msg
 viewBody model =
     let
         zone =
@@ -44,12 +45,12 @@ viewBody model =
             else
                 String.fromInt num
     in
-    div []
-        [ div []
+    row []
+        [ column []
             [ a [ href "/media", style "margin-right" "10px" ] [ text "Audio" ]
             , a [ href "/settings" ] [ text "Réglages" ]
             ]
-        , div []
+        , row []
             [ text <| format <| Time.toHour zone ct
             , text ":"
             , text <| format <| Time.toMinute zone ct
