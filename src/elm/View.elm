@@ -5,20 +5,21 @@ import Element exposing (Element, Length, alignBottom, alignLeft, alignRight, al
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
+import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed as EK
 import Html as H
 import Html.Attributes as HA
 import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath)
 import Style exposing (blackColor)
-import Time
+import Time exposing (Month(..))
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
 
 
 view : Model -> Document Msg
 view model =
     { title = "InCarRaspberry"
-    , body = [ Element.layout [] <| viewBody model ]
+    , body = [ Element.layout [ Font.size 18 ] <| viewBody model ]
     }
 
 
@@ -52,7 +53,7 @@ viewMedia : Player -> Element Msg
 viewMedia player =
     column [ width fill, height fill ]
         [ viewSearchBar player
-        , EK.column [ scrollbarY, height <| px 300, Border.color blackColor, Border.width 1 ]
+        , EK.column [ scrollbarY, height <| px 300, Border.color blackColor, Border.width 1, htmlAttribute <| HA.style "text-overflow" "ellipsis" ]
             (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)
         ]
 
@@ -86,10 +87,50 @@ viewStatusBar clock =
 
             else
                 String.fromInt num
+
+        monthToInt num =
+            case num of
+                Jan ->
+                    1
+
+                Feb ->
+                    2
+
+                Mar ->
+                    3
+
+                Apr ->
+                    4
+
+                May ->
+                    5
+
+                Jun ->
+                    6
+
+                Jul ->
+                    7
+
+                Aug ->
+                    8
+
+                Sep ->
+                    9
+
+                Oct ->
+                    10
+
+                Nov ->
+                    11
+
+                _ ->
+                    12
     in
     row [ width fill ]
         [ row [ alignRight ]
-            [ text <| format <| Time.toHour zone ct
+            [ text <| String.join "-" <| List.map format [ Time.toDay zone ct, monthToInt <| Time.toMonth zone ct, Time.toYear zone ct ]
+            , text " "
+            , text <| format <| Time.toHour zone ct
             , text ":"
             , text <| format <| Time.toMinute zone ct
             ]
