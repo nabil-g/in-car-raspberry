@@ -1,11 +1,14 @@
 module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
-import Element exposing (Element, column, el, layout, none, row)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
-import Html.Keyed as HK
+import Element exposing (Element, column, el, html, htmlAttribute, image, layout, link, none, paragraph, row, text)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Events exposing (onClick)
+import Element.Input as Input
+import Element.Keyed as EK
+import Html as H
+import Html.Attributes as HA
 import Model exposing (Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath)
 import Time
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
@@ -47,30 +50,37 @@ viewBody model =
     in
     row []
         [ column []
-            [ a [ href "/media", style "margin-right" "10px" ] [ text "Audio" ]
-            , a [ href "/settings" ] [ text "Réglages" ]
+            [ link [] { url = "/media", label = text "Audio" }
+            , link [] { url = "/settings", label = text "Réglages" }
             ]
-        , row []
-            [ text <| format <| Time.toHour zone ct
-            , text ":"
-            , text <| format <| Time.toMinute zone ct
+        , column []
+            [ paragraph []
+                [ text <| format <| Time.toHour zone ct
+                , text ":"
+                , text <| format <| Time.toMinute zone ct
+                ]
+            , currentPage
             ]
-        , currentPage
         ]
 
 
-viewMedia : Player -> Html Msg
+viewMedia : Player -> Element Msg
 viewMedia player =
-    div []
-        [ input [ type_ "text", placeholder "Rechercher", onInput Search, value player.search ] []
-        , button [ onClick ClearSearch ] [ text "Effacer" ]
+    column []
+        [ Input.text []
+            { onChange = Search
+            , text = player.search
+            , placeholder = Just <| Input.placeholder [] <| text "Rechercher"
+            , label = Input.labelHidden "Rechercher"
+            }
+        , Input.button [] { onPress = Just ClearSearch, label = text "Effacer" }
         , viewPlayerToolbar player
-        , HK.ul []
+        , EK.column []
             (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)
         ]
 
 
-viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Html Msg )
+viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
 viewTrack ps ( num, tr ) =
     let
         currentTrack =
@@ -80,20 +90,22 @@ viewTrack ps ( num, tr ) =
                 |> (==) tr.relativePath
     in
     ( String.fromInt num
-    , li
-        [ style "cursor" "pointer"
-        , onClick <| SetTrack tr
-        , if currentTrack then
-            style "color" "green"
+    , row
+        ([ htmlAttribute <| HA.style "cursor" "pointer"
+         , onClick <| SetTrack tr
+         ]
+            ++ (if currentTrack then
+                    [ htmlAttribute <| HA.style "color" "green" ]
 
-          else
-            class ""
-        ]
+                else
+                    []
+               )
+        )
         [ text tr.filename ]
     )
 
 
-viewPlayerToolbar : Player -> Html Msg
+viewPlayerToolbar : Player -> Element Msg
 viewPlayerToolbar player =
     let
         status =
@@ -106,7 +118,7 @@ viewPlayerToolbar player =
                         |> displayCurrentTrack
 
                 Nothing ->
-                    text ""
+                    none
 
         ( buttonMsg, buttonTxt ) =
             case player.status of
@@ -131,35 +143,35 @@ viewPlayerToolbar player =
             else
                 ( False, "Désactiver le mode aléatoire" )
     in
-    div []
-        [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
-        , button [ onClick buttonMsg, disabled disableOnError ] [ text buttonTxt ]
-        , button [ onClick Next, disabled disableOnError ] [ text "Suiv" ]
-        , button [ onClick <| ToggleLoop <| not player.loop, disabled disableOnError, style "margin-left" "10px" ]
-            [ if player.loop then
-                text "Désactiver la répétition"
+    row []
+        [ Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just Previous, label = text "Prev" }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just buttonMsg, label = text buttonTxt }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just Next, label = text "Suiv" }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError ]
+            { onPress = Just <| ToggleLoop <| not player.loop
+            , label =
+                if player.loop then
+                    text "Désactiver la répétition"
 
-              else
-                text "Activer la répétition"
-            ]
-        , button [ onClick <| ToggleShuffle shuffleMsg, disabled disableOnError ]
-            [ text shuffleTxt
-            ]
+                else
+                    text "Activer la répétition"
+            }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just <| ToggleShuffle shuffleMsg, label = text shuffleTxt }
         , text <| String.fromInt <| List.length player.tracksList
         , status
         ]
 
 
-displayCurrentTrack : TrackInfo -> Html Msg
+displayCurrentTrack : TrackInfo -> Element Msg
 displayCurrentTrack tri =
-    div []
-        [ p [] [ text <| Maybe.withDefault tri.filename tri.title ]
-        , p [] [ text <| Maybe.withDefault "" tri.artist ]
-        , p [] [ text <| Maybe.withDefault "" tri.album ]
+    column []
+        [ paragraph [] [ text <| Maybe.withDefault tri.filename tri.title ]
+        , paragraph [] [ text <| Maybe.withDefault "" tri.artist ]
+        , paragraph [] [ text <| Maybe.withDefault "" tri.album ]
         , case tri.picture of
             Just pic ->
-                img [ src pic ] []
+                image [] { src = pic, description = "Pochette d'album" }
 
             Nothing ->
-                text ""
+                none
         ]
