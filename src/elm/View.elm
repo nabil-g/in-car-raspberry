@@ -11,7 +11,7 @@ import Element.Keyed as EK
 import Html as H
 import Html.Attributes as HA
 import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath)
-import Style exposing (blackColor)
+import Style exposing (..)
 import Time exposing (Month(..))
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
 
@@ -37,8 +37,8 @@ viewBody model =
                 NotFound ->
                     text "Not found"
     in
-    row [ width fill ]
-        [ column [ height fill, width <| fillPortion 1 ]
+    row [ width fill, height fill ]
+        [ column [ height fill, width <| fillPortion 1, Background.color redColor ]
             [ link [] { url = "/media", label = text "Audio" }
             , link [] { url = "/settings", label = text "Réglages" }
             ]
@@ -46,29 +46,6 @@ viewBody model =
             [ viewStatusBar model.clock
             , currentPage
             ]
-        ]
-
-
-viewMedia : Player -> Element Msg
-viewMedia player =
-    column [ width fill, height fill ]
-        [ viewSearchBar player
-        , EK.column [ scrollbarY, height <| px 300, Border.color blackColor, Border.width 1, htmlAttribute <| HA.style "text-overflow" "ellipsis" ]
-            (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)
-        ]
-
-
-viewSearchBar : Player -> Element Msg
-viewSearchBar player =
-    row []
-        [ Input.text []
-            { onChange = Search
-            , text = player.search
-            , placeholder = Just <| Input.placeholder [] <| text "Rechercher"
-            , label = Input.labelHidden "Rechercher"
-            }
-        , Input.button [] { onPress = Just ClearSearch, label = text "Effacer" }
-        , viewPlayerToolbar player
         ]
 
 
@@ -126,7 +103,7 @@ viewStatusBar clock =
                 _ ->
                     12
     in
-    row [ width fill ]
+    row [ width fill, Background.color greenColor, height <| fillPortion 1 ]
         [ row [ alignRight ]
             [ text <| String.join "-" <| List.map format [ Time.toDay zone ct, monthToInt <| Time.toMonth zone ct, Time.toYear zone ct ]
             , text " "
@@ -135,6 +112,47 @@ viewStatusBar clock =
             , text <| format <| Time.toMinute zone ct
             ]
         ]
+
+
+viewMedia : Player -> Element Msg
+viewMedia player =
+    column [ width fill, height <| fillPortion 9 ]
+        [ viewSearchBar player
+        , viewTracks player
+        , viewPlayerToolbar player
+        ]
+
+
+viewSearchBar : Player -> Element Msg
+viewSearchBar player =
+    row []
+        [ Input.text []
+            { onChange = Search
+            , text = player.search
+            , placeholder = Just <| Input.placeholder [] <| text "Rechercher"
+            , label = Input.labelHidden "Rechercher"
+            }
+        , Input.button [] { onPress = Just ClearSearch, label = text "Effacer" }
+        ]
+
+
+viewTracks : Player -> Element Msg
+viewTracks player =
+    let
+        filteredList =
+            getTheFilteredList player.search player.tracksList
+
+        list =
+            if player.tracksList == [] then
+                [ ( "", el [ centerX, centerY ] <| text "Rien de rien" ) ]
+
+            else if filteredList == [] then
+                [ ( "", el [ centerX, centerY ] <| text "Rien ne correspond à cette recherche" ) ]
+
+            else
+                List.map (viewTrack player.status) filteredList
+    in
+    EK.column [ scrollbarY, height <| px 300, Border.color blackColor, Border.width 1, htmlAttribute <| HA.style "text-overflow" "ellipsis" ] list
 
 
 viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
@@ -200,7 +218,7 @@ viewPlayerToolbar player =
             else
                 ( False, "Désactiver le mode aléatoire" )
     in
-    row []
+    row [ width fill, height fill ]
         [ Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just Previous, label = text "Prev" }
         , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just buttonMsg, label = text buttonTxt }
         , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just Next, label = text "Suiv" }
@@ -221,14 +239,16 @@ viewPlayerToolbar player =
 
 displayCurrentTrack : TrackInfo -> Element Msg
 displayCurrentTrack tri =
-    column []
-        [ paragraph [] [ text <| Maybe.withDefault tri.filename tri.title ]
-        , paragraph [] [ text <| Maybe.withDefault "" tri.artist ]
-        , paragraph [] [ text <| Maybe.withDefault "" tri.album ]
-        , case tri.picture of
-            Just pic ->
-                image [ width <| px 100 ] { src = pic, description = "Pochette d'album" }
+    row [ width fill ]
+        [ paragraph []
+            [ el [] <| text <| Maybe.withDefault tri.filename tri.title
+            , el [] <| text <| Maybe.withDefault "" tri.artist
+            , el [] <| text <| Maybe.withDefault "" tri.album
+            , case tri.picture of
+                Just pic ->
+                    image [ width <| px 100 ] { src = pic, description = "Pochette d'album" }
 
-            Nothing ->
-                none
+                Nothing ->
+                    none
+            ]
         ]
