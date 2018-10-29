@@ -21,11 +21,7 @@ module.exports = ({ mode, presets } = { mode: "production", presets: [] }) => {
             use: 'file-loader?publicPath=../../&name=assets/css/[hash].[ext]',
           },
         ]
-      },
-
-      plugins: [
-        new StyleLintPlugin(),
-      ]
+      }
     },
     modeConfig(mode),
     presetConfig({ mode, presets }),

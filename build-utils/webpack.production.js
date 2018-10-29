@@ -19,29 +19,29 @@ module.exports = () => ({
         exclude: [/elm-stuff/, /node_modules/],
         use: 'elm-webpack-loader'
       },
-      // {
-      //   test: /\.(sa|sc|c)ss$/,
-      //   use: [
-      //     MiniCssExtractPlugin.loader,
-      //     'css-loader',
-      //     'postcss-loader',
-      //     'sass-loader',
-      //   ],
-      // }
+      {
+        test: /\.(sa|sc|c)ss$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          'postcss-loader',
+          'sass-loader',
+        ],
+      }
     ]
   },
 
   plugins: [
-    // new MiniCssExtractPlugin({
-    //   filename: 'assets/css/[name].[hash].css',
-    //   chunkFilename: '[id].[hash].css',
-    // }),
+    new MiniCssExtractPlugin({
+      filename: 'assets/css/[name].[hash].css',
+      chunkFilename: '[id].[hash].css',
+    }),
 
-    // new PurifyCSSPlugin({
-    //   // Give paths to parse for rules. These should be absolute!
-    //   paths: glob.sync(path.join(__dirname, '../src/**/*.elm')),
-    //   verbose: true,
-    // }),
+    new PurifyCSSPlugin({
+      // Give paths to parse for rules. These should be absolute!
+      paths: glob.sync(path.join(__dirname, '../src/**/*.elm')),
+      verbose: true,
+    }),
 
     new CopyWebpackPlugin([
       { from: 'src/assets/images', to: 'assets/images' },
@@ -64,6 +64,6 @@ module.exports = () => ({
     //   },
     // }),
     //
-    // new OptimizeCSSAssetsPlugin()
+    new OptimizeCSSAssetsPlugin()
   ]
 });
