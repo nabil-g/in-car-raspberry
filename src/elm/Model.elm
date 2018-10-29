@@ -1,4 +1,4 @@
-module Model exposing (Base64, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, parsePath, trackDecoder, urlToRoute, Clock)
+module Model exposing (Base64, Clock, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, parsePath, trackDecoder, urlToRoute, routeToUrlString)
 
 import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
@@ -197,3 +197,16 @@ urlToRoute url =
 
         _ ->
             NotFound
+
+
+routeToUrlString : Route -> String
+routeToUrlString r =
+    case r of
+        Media ->
+            "/media"
+
+        Settings ->
+            "/settings"
+
+        NotFound ->
+            "/"

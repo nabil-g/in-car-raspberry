@@ -6,7 +6,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const glob = require('glob');
 const mm = require('music-metadata');
-var md5 = require('md5');
+let md5 = require('md5');
 
 
 let musicDir = process.env.MUSIC_DIR || '/home/nabil/Musique';
@@ -19,6 +19,8 @@ app.use(express.static(musicDir));
 
 app.use(express.static('artworks'));
 app.use(express.static('dist'));
+app.use(express.static('static'));
+
 
 http.listen(serverPort, function () {
     console.log(`App listening on port ${serverPort}`);

@@ -10,7 +10,7 @@ import Element.Input as Input
 import Element.Keyed as EK
 import Html as H
 import Html.Attributes as HA
-import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath)
+import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath, routeToUrlString)
 import Style exposing (..)
 import Time exposing (Month(..))
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
@@ -36,17 +36,36 @@ viewBody model =
 
                 NotFound ->
                     text "Not found"
+
+        navLink route ico =
+            link
+                ([ padding 25, Font.size 25 ]
+                    ++ (if route == model.routing.currentPage then
+                            [ Border.widthEach { bottom = 3, left = 0, right = 0, top = 0 }, Border.color blackColor ]
+
+                        else
+                            []
+                       )
+                )
+                { url = routeToUrlString route, label = icon [] ico }
     in
     row [ width fill, height fill ]
-        [ column [ height fill, width <| fillPortion 1, Background.color redColor ]
-            [ link [] { url = "/media", label = text "Audio" }
-            , link [] { url = "/settings", label = text "Réglages" }
+        [ column [ height fill, width <| fillPortion 8, Background.color redColor ]
+            [ navLink Media "audio"
+            , navLink Settings "settings"
             ]
-        , column [ height fill, width <| fillPortion 10 ]
+        , column [ height fill, width <| fillPortion 92 ]
             [ viewStatusBar model.clock
-            , currentPage
+            , column [ width fill, height <| fillPortion 9 ]
+                [ currentPage
+                ]
             ]
         ]
+
+
+icon : List (H.Attribute msg) -> String -> Element msg
+icon attrs name =
+    html <| H.i [ HA.class ("zmdi zmdi-" ++ name) ] []
 
 
 viewStatusBar : Clock -> Element Msg
@@ -116,7 +135,7 @@ viewStatusBar clock =
 
 viewMedia : Player -> Element Msg
 viewMedia player =
-    column [ width fill, height <| fillPortion 9 ]
+    column [ width fill, height fill ]
         [ viewSearchBar player
         , viewTracks player
         , viewPlayerToolbar player
@@ -129,10 +148,10 @@ viewSearchBar player =
         [ Input.text []
             { onChange = Search
             , text = player.search
-            , placeholder = Just <| Input.placeholder [] <| text "Rechercher"
+            , placeholder = Just <| Input.placeholder [] <| row [] [ icon [] "search", text " Rechercher" ]
             , label = Input.labelHidden "Rechercher"
             }
-        , Input.button [] { onPress = Just ClearSearch, label = text "Effacer" }
+        , Input.button [] { onPress = Just ClearSearch, label = icon [] "close" }
         ]
 
 
@@ -198,10 +217,10 @@ viewPlayerToolbar player =
         ( buttonMsg, buttonTxt ) =
             case player.status of
                 Playing tr ->
-                    ( Pause, "Pause" )
+                    ( Pause, "pause-circle-outline" )
 
                 _ ->
-                    ( Play, "Lire" )
+                    ( Play, "play-circle-outline" )
 
         disableOnError =
             case player.status of
@@ -211,27 +230,31 @@ viewPlayerToolbar player =
                 _ ->
                     False
 
-        ( shuffleMsg, shuffleTxt ) =
+        ( shuffleMsg, shuffleColor ) =
             if player.shuffle == Disabled then
-                ( True, "Activer le mode aléatoire" )
+                ( True, Font.color blackColor )
 
             else
-                ( False, "Désactiver le mode aléatoire" )
+                ( False, Font.color redColor )
     in
     row [ width fill, height fill ]
-        [ Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just Previous, label = text "Prev" }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just buttonMsg, label = text buttonTxt }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just Next, label = text "Suiv" }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError ]
+        [ Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just Previous, label = icon [] "skip-previous" }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 35, padding 20 ] { onPress = Just buttonMsg, label = icon [] buttonTxt }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just Next, label = icon [] "skip-next" }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ]
             { onPress = Just <| ToggleLoop <| not player.loop
             , label =
-                if player.loop then
-                    text "Désactiver la répétition"
+                el
+                    [ if player.loop then
+                        Font.color redColor
 
-                else
-                    text "Activer la répétition"
+                      else
+                        Font.color blackColor
+                    ]
+                <|
+                    icon [] "repeat"
             }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError ] { onPress = Just <| ToggleShuffle shuffleMsg, label = text shuffleTxt }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just <| ToggleShuffle shuffleMsg, label = el [ shuffleColor ] <| icon [] "shuffle" }
         , text <| String.fromInt <| List.length player.tracksList
         , status
         ]
