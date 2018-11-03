@@ -1,7 +1,7 @@
 module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
-import Element exposing (Element, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
+import Element exposing (Element, FocusStyle, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, focusStyle, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -19,7 +19,7 @@ import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
 view : Model -> Document Msg
 view model =
     { title = "InCarRaspberry"
-    , body = [ Element.layout [ Font.size 18, height <| px model.windowHeight ] <| viewBody model ]
+    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model ]
     }
 
 
@@ -181,7 +181,7 @@ viewTracks player =
             else
                 List.map (viewTrack player.status) filteredList
     in
-    EK.column [ scrollbarY, clipX, height <| px 250, width <| px 729, Border.color blackColor, Border.width 1, htmlAttribute <| HA.style "text-overflow" "ellipsis" ] list
+    EK.column [ scrollbarY, clipX, height <| px 300, width <| px 729, Border.color blackColor, Border.width 1 ] list
 
 
 viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
@@ -247,11 +247,11 @@ viewPlayerToolbar player =
             else
                 ( False, Font.color redColor )
     in
-    row [ width fill, Background.color blueColor ]
-        [ Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just Previous, label = icon [] "skip-previous" }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 35, padding 20 ] { onPress = Just buttonMsg, label = icon [] buttonTxt }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just Next, label = icon [] "skip-next" }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ]
+    row [ width fill, Background.color blueColor, height <| px 100 ]
+        [ Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, paddingXY 10 0 ] { onPress = Just Previous, label = icon [] "skip-previous" }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 35, paddingXY 10 0 ] { onPress = Just buttonMsg, label = icon [] buttonTxt }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, paddingXY 10 0 ] { onPress = Just Next, label = icon [] "skip-next" }
+        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, paddingXY 10 0 ]
             { onPress = Just <| ToggleLoop <| not player.loop
             , label =
                 el
@@ -267,6 +267,7 @@ viewPlayerToolbar player =
         , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just <| ToggleShuffle shuffleMsg, label = el [ shuffleColor ] <| icon [] "shuffle" }
 
         --        , text <| String.fromInt <| List.length player.tracksList
+        --        , x
         , status
         ]
 
@@ -276,8 +277,6 @@ displayCurrentTrack tri =
     row [ width fill, spaceEvenly ]
         [ column [ width <| fillPortion 5, clip ]
             [ row [ Font.bold ] [ text <| Maybe.withDefault tri.filename tri.title ]
-
-            --            [ row [ Font.bold ] [ text "in Your Arms EP - Benjamin Diamond - In Your ArmsWe Gonna Make It (Alan Braxe mix).mp3" ]
             , row [] [ text <| Maybe.withDefault "" tri.artist ]
             , row [ Font.italic ] [ text <| Maybe.withDefault "" tri.album ]
             ]
@@ -285,10 +284,30 @@ displayCurrentTrack tri =
             [ width <| fillPortion 5 ]
             [ case tri.picture of
                 Just pic ->
-                    image [ width <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
+                    image [ height <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
 
                 Nothing ->
                     none
+            ]
+        ]
+
+
+x =
+    row [ width fill, spaceEvenly, clip ]
+        [ column [ width <| fillPortion 5, clip ]
+            --            [ row [ Font.bold ] [ text <| Maybe.withDefault tri.filename tri.title ]
+            [ row [ Font.bold, clip ] [ text "in Your Arms EP - Benjamin Diamond - In Your ArmsWe Gonna Make It (Alan Braxe mix).mp3" ]
+            , row [] [ text <| "xxxxxxxxxxxxxxxxxxxxxxx" ]
+            , row [ Font.italic, clip ] [ text <| "xxxxxxxxxxxxxxxxxxxxxxx" ]
+            ]
+        , row
+            [ width <| fillPortion 5 ]
+            --            [ case tri.picture of
+            --                Just pic ->
+            [ image [ width <| px 100, onClick <| DisplayArtwork "68ff971e983a0298100564f03702e46f.jpg" ] { src = "68ff971e983a0298100564f03702e46f.jpg", description = "Pochette d'album" }
+
+            --                Nothing ->
+            --                    none
             ]
         ]
 
