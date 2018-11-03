@@ -1,4 +1,4 @@
-module Style exposing (blackColor, blueColor, greenColor, redColor)
+module Style exposing (blackColor, blueColor, greenColor, redColor, whiteColor)
 
 import Element exposing (Color, rgb)
 
@@ -6,6 +6,11 @@ import Element exposing (Color, rgb)
 blackColor : Color
 blackColor =
     rgb 0 0 0
+
+
+whiteColor : Color
+whiteColor =
+    rgb 255 255 255
 
 
 redColor : Color

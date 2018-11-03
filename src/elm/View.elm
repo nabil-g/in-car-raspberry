@@ -1,7 +1,7 @@
 module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
-import Element exposing (Element, Length, alignBottom, alignLeft, alignRight, alignTop, centerX, centerY, column, el, fill, fillPortion, height, html, htmlAttribute, image, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
+import Element exposing (Element, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -19,7 +19,7 @@ import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
 view : Model -> Document Msg
 view model =
     { title = "InCarRaspberry"
-    , body = [ Element.layout [ Font.size 18 ] <| viewBody model ]
+    , body = [ Element.layout [ Font.size 18, height <| px model.windowHeight ] <| viewBody model ]
     }
 
 
@@ -41,7 +41,7 @@ viewBody model =
             link
                 ([ padding 25, Font.size 25 ]
                     ++ (if route == model.routing.currentPage then
-                            [ Border.widthEach { bottom = 3, left = 0, right = 0, top = 0 }, Border.color blackColor ]
+                            [ Font.color whiteColor ]
 
                         else
                             []
@@ -49,14 +49,24 @@ viewBody model =
                 )
                 { url = routeToUrlString route, label = icon [] ico }
     in
-    row [ width fill, height fill ]
+    row
+        ([ width fill, height fill ]
+            ++ (Maybe.withDefault [] <|
+                    Maybe.map
+                        (List.singleton
+                            << inFront
+                            << displayFullScreenArtwork CloseArtwork
+                        )
+                        model.player.fullscreenArtwork
+               )
+        )
         [ column [ height fill, width <| fillPortion 8, Background.color redColor ]
             [ navLink Media "audio"
             , navLink Settings "settings"
             ]
         , column [ height fill, width <| fillPortion 92 ]
             [ viewStatusBar model.clock
-            , column [ width fill, height <| fillPortion 9 ]
+            , column [ width fill, height <| fillPortion 95 ]
                 [ currentPage
                 ]
             ]
@@ -122,7 +132,7 @@ viewStatusBar clock =
                 _ ->
                     12
     in
-    row [ width fill, Background.color greenColor, height <| fillPortion 1 ]
+    row [ width fill, Background.color greenColor, height <| fillPortion 5 ]
         [ row [ alignRight ]
             [ text <| String.join "-" <| List.map format [ Time.toDay zone ct, monthToInt <| Time.toMonth zone ct, Time.toYear zone ct ]
             , text " "
@@ -171,7 +181,7 @@ viewTracks player =
             else
                 List.map (viewTrack player.status) filteredList
     in
-    EK.column [ scrollbarY, height <| px 300, Border.color blackColor, Border.width 1, htmlAttribute <| HA.style "text-overflow" "ellipsis" ] list
+    EK.column [ scrollbarY, clipX, height <| px 250, width <| px 729, Border.color blackColor, Border.width 1, htmlAttribute <| HA.style "text-overflow" "ellipsis" ] list
 
 
 viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
@@ -184,7 +194,7 @@ viewTrack ps ( num, tr ) =
                 |> (==) tr.relativePath
     in
     ( String.fromInt num
-    , paragraph
+    , row
         ([ htmlAttribute <| HA.style "cursor" "pointer"
          , onClick <| SetTrack tr
          ]
@@ -237,7 +247,7 @@ viewPlayerToolbar player =
             else
                 ( False, Font.color redColor )
     in
-    row [ width fill, height fill ]
+    row [ width fill, Background.color blueColor ]
         [ Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just Previous, label = icon [] "skip-previous" }
         , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 35, padding 20 ] { onPress = Just buttonMsg, label = icon [] buttonTxt }
         , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just Next, label = icon [] "skip-next" }
@@ -255,23 +265,65 @@ viewPlayerToolbar player =
                     icon [] "repeat"
             }
         , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just <| ToggleShuffle shuffleMsg, label = el [ shuffleColor ] <| icon [] "shuffle" }
-        , text <| String.fromInt <| List.length player.tracksList
+
+        --        , text <| String.fromInt <| List.length player.tracksList
         , status
         ]
 
 
 displayCurrentTrack : TrackInfo -> Element Msg
 displayCurrentTrack tri =
-    row [ width fill ]
-        [ paragraph []
-            [ el [] <| text <| Maybe.withDefault tri.filename tri.title
-            , el [] <| text <| Maybe.withDefault "" tri.artist
-            , el [] <| text <| Maybe.withDefault "" tri.album
-            , case tri.picture of
+    row [ width fill, spaceEvenly ]
+        [ column [ width <| fillPortion 5, clip ]
+            [ row [ Font.bold ] [ text <| Maybe.withDefault tri.filename tri.title ]
+
+            --            [ row [ Font.bold ] [ text "in Your Arms EP - Benjamin Diamond - In Your ArmsWe Gonna Make It (Alan Braxe mix).mp3" ]
+            , row [] [ text <| Maybe.withDefault "" tri.artist ]
+            , row [ Font.italic ] [ text <| Maybe.withDefault "" tri.album ]
+            ]
+        , row
+            [ width <| fillPortion 5 ]
+            [ case tri.picture of
                 Just pic ->
-                    image [ width <| px 100 ] { src = pic, description = "Pochette d'album" }
+                    image [ width <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
 
                 Nothing ->
                     none
             ]
         ]
+
+
+displayFullScreenArtwork : msg -> String -> Element msg
+displayFullScreenArtwork closeMsg pic =
+    el
+        [ width fill
+        , height fill
+        , behindContent <|
+            el
+                [ width fill
+                , height fill
+                , Background.color (rgba 0 0 0 0.7)
+                , onClick closeMsg
+                ]
+                none
+        , inFront <|
+            el
+                [ htmlAttribute <| HA.style "height" "100%"
+                , htmlAttribute <| HA.style "width" "100%"
+                , htmlAttribute <| HA.style "pointer-events" "none"
+                , htmlAttribute <| HA.style "position" "fixed"
+                ]
+            <|
+                el
+                    [ centerX
+                    , centerY
+                    , htmlAttribute <| HA.style "pointer-events" "all"
+                    , htmlAttribute <| HA.style "max-height" "90%"
+                    , htmlAttribute <| HA.style "width" "min-content"
+                    , scrollbarY
+                    ]
+                <|
+                    image [ width <| maximum 500 <| px 300 ] { src = pic, description = "Pochette d'album" }
+        ]
+    <|
+        none

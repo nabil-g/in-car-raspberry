@@ -4,7 +4,7 @@ import style from './assets/styles/main.scss';
 
 const socket = io();
 
-let app = Elm.Main.init({});
+let app = Elm.Main.init({ flags:window.innerHeight });
 
 let audioPlayer = new Audio();
 

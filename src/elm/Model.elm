@@ -1,4 +1,4 @@
-module Model exposing (Base64, Clock, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, parsePath, trackDecoder, urlToRoute, routeToUrlString)
+module Model exposing (Base64, Clock, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, parsePath, routeToUrlString, trackDecoder, urlToRoute)
 
 import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
@@ -11,6 +11,7 @@ type alias Model =
     { clock : Clock
     , routing : Routing
     , player : Player
+    , windowHeight : Int
     }
 
 
@@ -20,6 +21,7 @@ type alias Player =
     , loop : Bool
     , shuffle : Randomness
     , search : String
+    , fullscreenArtwork : Maybe String
     }
 
 
@@ -135,23 +137,6 @@ trackDecoder =
         |> optional "artist" (D.nullable D.string) Nothing
         |> optional "album" (D.nullable D.string) Nothing
         |> optional "picture" (D.nullable D.string) Nothing
-
-
-initialModel : Url.Url -> Nav.Key -> Model
-initialModel url key =
-    { clock = Clock Time.utc (Time.millisToPosix 0)
-    , routing =
-        { key = key
-        , currentPage = urlToRoute url
-        }
-    , player =
-        { tracksList = []
-        , status = Empty
-        , loop = False
-        , shuffle = Disabled
-        , search = ""
-        }
-    }
 
 
 getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo

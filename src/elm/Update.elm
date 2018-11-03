@@ -29,11 +29,23 @@ type Msg
     | UrlChanged Url.Url
     | LinkClicked Browser.UrlRequest
     | ClearSearch
+    | CloseArtwork
+    | DisplayArtwork String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        DisplayArtwork s ->
+            model.player
+                |> (\p -> { p | fullscreenArtwork = Just s })
+                |> (\p -> ( { model | player = p }, Cmd.none ))
+
+        CloseArtwork ->
+            model.player
+                |> (\p -> { p | fullscreenArtwork = Nothing })
+                |> (\p -> ( { model | player = p }, Cmd.none ))
+
         ClearSearch ->
             let
                 updatedPlayer =
