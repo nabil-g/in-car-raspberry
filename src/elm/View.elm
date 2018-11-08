@@ -1,6 +1,7 @@
 module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
+import Browser.Dom as Dom
 import Element exposing (Element, FocusStyle, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, focusStyle, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
 import Element.Background as Background
 import Element.Border as Border
@@ -12,8 +13,9 @@ import Html as H
 import Html.Attributes as HA
 import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath, routeToUrlString)
 import Style exposing (..)
-import Time exposing (Month(..))
+import Time exposing (Month(..), Weekday(..))
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
+import Utils
 
 
 view : Model -> Document Msg
@@ -35,11 +37,14 @@ viewBody model =
                     text "Réglages ..."
 
                 NotFound ->
-                    text "Not found"
+                    text "Pas trouvé ..."
+
+                _ ->
+                    text "Pas encore dispo ..."
 
         navLink route ico =
             link
-                ([ padding 25, Font.size 25 ]
+                ([ padding 25, Font.size 25, centerX ]
                     ++ (if route == model.routing.currentPage then
                             [ Font.color whiteColor ]
 
@@ -61,8 +66,13 @@ viewBody model =
                )
         )
         [ column [ height fill, width <| fillPortion 8, Background.color redColor ]
-            [ navLink Media "audio"
-            , navLink Settings "settings"
+            [ column [ width fill, centerY ]
+                [ navLink Media "audio"
+                , navLink Radio "radio"
+                , navLink Navigation "navigation"
+                , navLink RearCam "videocam"
+                , navLink Settings "settings"
+                ]
             ]
         , column [ height fill, width <| fillPortion 92 ]
             [ viewStatusBar model.clock
@@ -86,59 +96,14 @@ viewStatusBar clock =
 
         ct =
             clock.currentTime
-
-        format num =
-            if num >= 0 && num < 10 then
-                "0" ++ String.fromInt num
-
-            else
-                String.fromInt num
-
-        monthToInt num =
-            case num of
-                Jan ->
-                    1
-
-                Feb ->
-                    2
-
-                Mar ->
-                    3
-
-                Apr ->
-                    4
-
-                May ->
-                    5
-
-                Jun ->
-                    6
-
-                Jul ->
-                    7
-
-                Aug ->
-                    8
-
-                Sep ->
-                    9
-
-                Oct ->
-                    10
-
-                Nov ->
-                    11
-
-                _ ->
-                    12
     in
     row [ width fill, Background.color greenColor, height <| fillPortion 5 ]
         [ row [ alignRight ]
-            [ text <| String.join "-" <| List.map format [ Time.toDay zone ct, monthToInt <| Time.toMonth zone ct, Time.toYear zone ct ]
+            [ text <| Utils.dateToFrench zone ct
             , text " "
-            , text <| format <| Time.toHour zone ct
+            , text <| Utils.formatSingleDigit <| Time.toHour zone ct
             , text ":"
-            , text <| format <| Time.toMinute zone ct
+            , text <| Utils.formatSingleDigit <| Time.toMinute zone ct
             ]
         ]
 
@@ -154,14 +119,29 @@ viewMedia player =
 
 viewSearchBar : Player -> Element Msg
 viewSearchBar player =
+    let
+        lsLength =
+            List.length player.tracksList
+
+        placeholderTxt =
+            if lsLength > 2 then
+                " Rechercher parmi " ++ String.fromInt lsLength ++ " morceaux"
+
+            else
+                " Rechercher"
+    in
     row []
-        [ Input.text []
+        [ Input.text [ Border.width 0 ]
             { onChange = Search
             , text = player.search
-            , placeholder = Just <| Input.placeholder [] <| row [] [ icon [] "search", text " Rechercher" ]
+            , placeholder = Just <| Input.placeholder [ Font.italic ] <| row [] [ icon [] "search", text placeholderTxt ]
             , label = Input.labelHidden "Rechercher"
             }
-        , Input.button [] { onPress = Just ClearSearch, label = icon [] "close" }
+        , if player.search == "" then
+            none
+
+          else
+            Input.button [] { onPress = Just ClearSearch, label = icon [] "close" }
         ]
 
 
@@ -181,7 +161,7 @@ viewTracks player =
             else
                 List.map (viewTrack player.status) filteredList
     in
-    EK.column [ scrollbarY, clipX, height <| px 300, width <| px 729, Border.color blackColor, Border.width 1 ] list
+    EK.column [ scrollbarY, clipX, height <| px 300, width <| px 729, htmlAttribute <| HA.id "tracksList" ] list
 
 
 viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
@@ -192,11 +172,23 @@ viewTrack ps ( num, tr ) =
                 |> Maybe.andThen parsePath
                 |> Maybe.withDefault ""
                 |> (==) tr.relativePath
+
+        bkgndColor =
+            if modBy 2 num == 0 then
+                "#f7f7f7"
+
+            else
+                "#ffffff"
     in
     ( String.fromInt num
     , row
         ([ htmlAttribute <| HA.style "cursor" "pointer"
          , onClick <| SetTrack tr
+         , htmlAttribute <| HA.id <| (++) "track-" <| String.fromInt num
+         , padding 10
+         , width fill
+         , clipX
+         , htmlAttribute <| HA.style "background-color" bkgndColor
          ]
             ++ (if currentTrack then
                     [ htmlAttribute <| HA.style "color" "green" ]
@@ -246,68 +238,57 @@ viewPlayerToolbar player =
 
             else
                 ( False, Font.color redColor )
+
+        playerBtn ftsize msg label =
+            Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size ftsize, paddingXY 10 0, centerY ] { onPress = Just msg, label = label }
     in
-    row [ width fill, Background.color blueColor, height <| px 100 ]
-        [ Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, paddingXY 10 0 ] { onPress = Just Previous, label = icon [] "skip-previous" }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 35, paddingXY 10 0 ] { onPress = Just buttonMsg, label = icon [] buttonTxt }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, paddingXY 10 0 ] { onPress = Just Next, label = icon [] "skip-next" }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, paddingXY 10 0 ]
-            { onPress = Just <| ToggleLoop <| not player.loop
-            , label =
-                el
+    row [ width fill, Background.color blueColor, height <| px 100, paddingXY 10 0, spacing 10 ]
+        [ row [ spacing 5 ]
+            [ playerBtn 30 Previous <| icon [] "skip-previous"
+            , playerBtn 40 buttonMsg <| icon [] buttonTxt
+            , playerBtn 30 Next <| icon [] "skip-next"
+            , playerBtn 30
+                (ToggleLoop <| not player.loop)
+                (el
                     [ if player.loop then
                         Font.color redColor
 
                       else
                         Font.color blackColor
                     ]
-                <|
+                 <|
                     icon [] "repeat"
-            }
-        , Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size 30, padding 20 ] { onPress = Just <| ToggleShuffle shuffleMsg, label = el [ shuffleColor ] <| icon [] "shuffle" }
-
-        --        , text <| String.fromInt <| List.length player.tracksList
-        --        , x
+                )
+            , playerBtn 30 (ToggleShuffle shuffleMsg) <| el [ shuffleColor ] <| icon [] "shuffle"
+            ]
         , status
         ]
 
 
 displayCurrentTrack : TrackInfo -> Element Msg
 displayCurrentTrack tri =
-    row [ width fill, spaceEvenly ]
-        [ column [ width <| fillPortion 5, clip ]
-            [ row [ Font.bold ] [ text <| Maybe.withDefault tri.filename tri.title ]
-            , row [] [ text <| Maybe.withDefault "" tri.artist ]
-            , row [ Font.italic ] [ text <| Maybe.withDefault "" tri.album ]
+    let
+        cutWords s =
+            if String.length s > 35 then
+                String.left 35 s ++ "..."
+
+            else
+                s
+    in
+    row [ width fill, spacing 5 ]
+        [ column []
+            [ row [ Font.bold ] [ text <| cutWords <| Maybe.withDefault tri.filename tri.title ]
+            , row [] [ text <| cutWords <| Maybe.withDefault "" tri.artist ]
+            , row [ Font.italic ] [ text <| cutWords <| Maybe.withDefault "" tri.album ]
             ]
         , row
-            [ width <| fillPortion 5 ]
+            [ alignRight ]
             [ case tri.picture of
                 Just pic ->
                     image [ height <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
 
                 Nothing ->
                     none
-            ]
-        ]
-
-
-x =
-    row [ width fill, spaceEvenly, clip ]
-        [ column [ width <| fillPortion 5, clip ]
-            --            [ row [ Font.bold ] [ text <| Maybe.withDefault tri.filename tri.title ]
-            [ row [ Font.bold, clip ] [ text "in Your Arms EP - Benjamin Diamond - In Your ArmsWe Gonna Make It (Alan Braxe mix).mp3" ]
-            , row [] [ text <| "xxxxxxxxxxxxxxxxxxxxxxx" ]
-            , row [ Font.italic, clip ] [ text <| "xxxxxxxxxxxxxxxxxxxxxxx" ]
-            ]
-        , row
-            [ width <| fillPortion 5 ]
-            --            [ case tri.picture of
-            --                Just pic ->
-            [ image [ width <| px 100, onClick <| DisplayArtwork "68ff971e983a0298100564f03702e46f.jpg" ] { src = "68ff971e983a0298100564f03702e46f.jpg", description = "Pochette d'album" }
-
-            --                Nothing ->
-            --                    none
             ]
         ]
 
@@ -331,6 +312,7 @@ displayFullScreenArtwork closeMsg pic =
                 , htmlAttribute <| HA.style "width" "100%"
                 , htmlAttribute <| HA.style "pointer-events" "none"
                 , htmlAttribute <| HA.style "position" "fixed"
+                , onClick closeMsg
                 ]
             <|
                 el
@@ -342,7 +324,7 @@ displayFullScreenArtwork closeMsg pic =
                     , scrollbarY
                     ]
                 <|
-                    image [ width <| maximum 500 <| px 300 ] { src = pic, description = "Pochette d'album" }
+                    image [ width <| maximum 420 <| px 400 ] { src = pic, description = "Pochette d'album" }
         ]
     <|
         none

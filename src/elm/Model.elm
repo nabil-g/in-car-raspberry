@@ -34,6 +34,9 @@ type alias Routing =
 type Route
     = Media
     | Settings
+    | Radio
+    | Navigation
+    | RearCam
     | NotFound
 
 
@@ -180,6 +183,15 @@ urlToRoute url =
         "settings" ->
             Settings
 
+        "radio" ->
+            Radio
+
+        "navigation" ->
+            Navigation
+
+        "rearCam" ->
+            RearCam
+
         _ ->
             NotFound
 
@@ -190,8 +202,17 @@ routeToUrlString r =
         Media ->
             "/media"
 
+        Radio ->
+            "/radio"
+
+        Navigation ->
+            "/navigation"
+
+        RearCam ->
+            "/rearCam"
+
         Settings ->
             "/settings"
 
         NotFound ->
-            "/"
+            "/notFound"
