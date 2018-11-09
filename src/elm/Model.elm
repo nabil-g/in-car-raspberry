@@ -1,4 +1,4 @@
-module Model exposing (Base64, Clock, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, parsePath, routeToUrlString, trackDecoder, urlToRoute)
+module Model exposing (Clock, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, parsePath, routeToUrlString, trackDecoder, urlToRoute)
 
 import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
@@ -112,7 +112,7 @@ type alias TrackInfo =
     , title : Maybe String
     , artist : Maybe String
     , album : Maybe String
-    , picture : Maybe Base64
+    , picture : Maybe String
     }
 
 
@@ -125,10 +125,6 @@ initTrackInfo =
     , album = Nothing
     , picture = Nothing
     }
-
-
-type alias Base64 =
-    String
 
 
 trackDecoder : D.Decoder TrackInfo
@@ -149,6 +145,8 @@ getTrackInfo ls tr =
         |> List.filter (\el -> el.relativePath == tr)
         |> List.head
         |> Maybe.withDefault initTrackInfo
+
+
 
 
 parsePath : String -> Maybe String

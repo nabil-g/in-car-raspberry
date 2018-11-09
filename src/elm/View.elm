@@ -20,8 +20,15 @@ import Utils
 
 view : Model -> Document Msg
 view model =
+    let
+        playerStyle =
+            model.player
+                |> getTrackInfoFromStatus
+                |> .picture
+                |> Style.setPlayerPageStyle
+    in
     { title = "InCarRaspberry"
-    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model, Style.setPlayerPageStyle ]
+    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model, playerStyle ]
     }
 
 
@@ -49,13 +56,13 @@ viewBody model =
                             [ Font.color whiteColor ]
 
                         else
-                            []
+                            [ Font.color <| rgba 255 255 255 0.4 ]
                        )
                 )
                 { url = routeToUrlString route, label = icon [] ico }
     in
     row
-        ([ width fill, height fill ]
+        ([ width fill, height fill, htmlAttribute <| HA.id "xxx" ]
             ++ (Maybe.withDefault [] <|
                     Maybe.map
                         (List.singleton
@@ -65,7 +72,7 @@ viewBody model =
                         model.player.fullscreenArtwork
                )
         )
-        [ column [ height fill, width <| fillPortion 8, Background.color redColor ]
+        [ column [ height fill, width <| fillPortion 8, Background.color <| rgba 0 0 0 0.2 ]
             [ column [ width fill, centerY ]
                 [ navLink Media "audio"
                 , navLink Radio "radio"
@@ -74,7 +81,7 @@ viewBody model =
                 , navLink Settings "settings"
                 ]
             ]
-        , column [ height fill, width <| fillPortion 92, htmlAttribute <| HA.id "xxx", Font.color whiteColor ]
+        , column [ height fill, width <| fillPortion 92, Font.color whiteColor ]
             [ viewStatusBar model.clock
             , column [ width fill, height <| fillPortion 95 ]
                 [ currentPage
@@ -134,7 +141,7 @@ viewSearchBar player =
         [ Input.text [ Border.width 0, Background.color <| rgba 0 0 0 0 ]
             { onChange = Search
             , text = player.search
-            , placeholder = Just <| Input.placeholder [ Font.italic ] <| row [] [ icon [] "search", text placeholderTxt ]
+            , placeholder = Just <| Input.placeholder [ Font.italic, Font.color whiteColor ] <| row [] [ icon [] "search", text placeholderTxt ]
             , label = Input.labelHidden "Rechercher"
             }
         , if player.search == "" then
@@ -206,16 +213,8 @@ viewPlayerToolbar : Player -> Element Msg
 viewPlayerToolbar player =
     let
         status =
-            case getCurrentTrack player.status of
-                Just tr ->
-                    tr
-                        |> parsePath
-                        |> Maybe.withDefault ""
-                        |> getTrackInfo player.tracksList
-                        |> displayCurrentTrack
-
-                Nothing ->
-                    none
+            getTrackInfoFromStatus player
+                |> displayCurrentTrack
 
         ( buttonMsg, buttonTxt ) =
             case player.status of
@@ -235,10 +234,10 @@ viewPlayerToolbar player =
 
         ( shuffleMsg, shuffleColor ) =
             if player.shuffle == Disabled then
-                ( True, Font.color blackColor )
+                ( True, Font.color whiteColor )
 
             else
-                ( False, Font.color redColor )
+                ( False, Font.color greenColor )
 
         playerBtn ftsize msg label =
             Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size ftsize, paddingXY 10 0, centerY ] { onPress = Just msg, label = label }
@@ -252,10 +251,10 @@ viewPlayerToolbar player =
                 (ToggleLoop <| not player.loop)
                 (el
                     [ if player.loop then
-                        Font.color redColor
+                        Font.color greenColor
 
                       else
-                        Font.color blackColor
+                        Font.color whiteColor
                     ]
                  <|
                     icon [] "repeat"
@@ -329,3 +328,12 @@ displayFullScreenArtwork closeMsg pic =
         ]
     <|
         none
+
+
+getTrackInfoFromStatus : Player -> TrackInfo
+getTrackInfoFromStatus player =
+    player.status
+        |> getCurrentTrack
+        |> Maybe.andThen parsePath
+        |> Maybe.withDefault ""
+        |> getTrackInfo player.tracksList
