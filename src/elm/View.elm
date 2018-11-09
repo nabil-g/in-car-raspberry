@@ -21,7 +21,7 @@ import Utils
 view : Model -> Document Msg
 view model =
     { title = "InCarRaspberry"
-    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model ]
+    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model, Style.setPlayerPageStyle ]
     }
 
 
@@ -74,7 +74,7 @@ viewBody model =
                 , navLink Settings "settings"
                 ]
             ]
-        , column [ height fill, width <| fillPortion 92 ]
+        , column [ height fill, width <| fillPortion 92, htmlAttribute <| HA.id "xxx", Font.color whiteColor ]
             [ viewStatusBar model.clock
             , column [ width fill, height <| fillPortion 95 ]
                 [ currentPage
@@ -97,7 +97,7 @@ viewStatusBar clock =
         ct =
             clock.currentTime
     in
-    row [ width fill, Background.color greenColor, height <| fillPortion 5 ]
+    row [ width fill, height <| fillPortion 5 ]
         [ row [ alignRight ]
             [ text <| Utils.dateToFrench zone ct
             , text " "
@@ -131,7 +131,7 @@ viewSearchBar player =
                 " Rechercher"
     in
     row []
-        [ Input.text [ Border.width 0 ]
+        [ Input.text [ Border.width 0, Background.color <| rgba 0 0 0 0 ]
             { onChange = Search
             , text = player.search
             , placeholder = Just <| Input.placeholder [ Font.italic ] <| row [] [ icon [] "search", text placeholderTxt ]
@@ -188,7 +188,8 @@ viewTrack ps ( num, tr ) =
          , padding 10
          , width fill
          , clipX
-         , htmlAttribute <| HA.style "background-color" bkgndColor
+
+         --         , htmlAttribute <| HA.style "background-color" bkgndColor
          ]
             ++ (if currentTrack then
                     [ htmlAttribute <| HA.style "color" "green" ]
@@ -242,7 +243,7 @@ viewPlayerToolbar player =
         playerBtn ftsize msg label =
             Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size ftsize, paddingXY 10 0, centerY ] { onPress = Just msg, label = label }
     in
-    row [ width fill, Background.color blueColor, height <| px 100, paddingXY 10 0, spacing 10 ]
+    row [ width fill, height <| px 100, paddingXY 10 0, spacing 10 ]
         [ row [ spacing 5 ]
             [ playerBtn 30 Previous <| icon [] "skip-previous"
             , playerBtn 40 buttonMsg <| icon [] buttonTxt
