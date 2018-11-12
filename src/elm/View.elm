@@ -1,31 +1,40 @@
 module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
-import Html.Keyed as HK
-import Model exposing (Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath)
-import Time
+import Browser.Dom as Dom
+import Element exposing (Element, FocusStyle, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, focusStyle, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Events exposing (onClick)
+import Element.Font as Font
+import Element.Input as Input
+import Element.Keyed as EK
+import Html as H
+import Html.Attributes as HA
+import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath, routeToUrlString)
+import Style exposing (..)
+import Time exposing (Month(..), Weekday(..))
 import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
+import Utils
 
 
 view : Model -> Document Msg
 view model =
+    let
+        playerStyle =
+            model.player
+                |> getTrackInfoFromStatus
+                |> .picture
+                |> Style.setPlayerPageStyle
+    in
     { title = "InCarRaspberry"
-    , body = [ viewBody model ]
+    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model, playerStyle ]
     }
 
 
-viewBody : Model -> Html Msg
+viewBody : Model -> Element Msg
 viewBody model =
     let
-        zone =
-            model.clock.timezone
-
-        ct =
-            model.clock.currentTime
-
         currentPage =
             case model.routing.currentPage of
                 Media ->
@@ -35,41 +44,134 @@ viewBody model =
                     text "Réglages ..."
 
                 NotFound ->
-                    text "Not found"
+                    text "Pas trouvé ..."
 
-        format num =
-            if num >= 0 && num < 10 then
-                "0" ++ String.fromInt num
+                _ ->
+                    text "Pas encore dispo ..."
+
+        navLink route ico =
+            link
+                ([ padding 25, Font.size 25, centerX ]
+                    ++ (if route == model.routing.currentPage then
+                            [ Font.color whiteColor ]
+
+                        else
+                            [ Font.color <| rgba 255 255 255 0.4 ]
+                       )
+                )
+                { url = routeToUrlString route, label = icon [] ico }
+    in
+    row
+        ([ width fill, height fill, htmlAttribute <| HA.id "xxx" ]
+            ++ (Maybe.withDefault [] <|
+                    Maybe.map
+                        (List.singleton
+                            << inFront
+                            << displayFullScreenArtwork CloseArtwork
+                        )
+                        model.player.fullscreenArtwork
+               )
+        )
+        [ column [ height fill, width <| fillPortion 8, Background.color <| rgba 0 0 0 0.2 ]
+            [ column [ width fill, centerY ]
+                [ navLink Media "audio"
+                , navLink Radio "radio"
+                , navLink Navigation "navigation"
+                , navLink RearCam "videocam"
+                , navLink Settings "settings"
+                ]
+            ]
+        , column [ height fill, width <| fillPortion 92, Font.color whiteColor ]
+            [ viewStatusBar model.clock
+            , column [ width fill, height <| fillPortion 95 ]
+                [ currentPage
+                ]
+            ]
+        ]
+
+
+icon : List (H.Attribute msg) -> String -> Element msg
+icon attrs name =
+    html <| H.i [ HA.class ("zmdi zmdi-" ++ name) ] []
+
+
+viewStatusBar : Clock -> Element Msg
+viewStatusBar clock =
+    let
+        zone =
+            clock.timezone
+
+        ct =
+            clock.currentTime
+    in
+    row [ width fill, height <| fillPortion 5 ]
+        [ row [ alignRight ]
+            [ text <| Utils.dateToFrench zone ct
+            , text " "
+            , text <| Utils.formatSingleDigit <| Time.toHour zone ct
+            , text ":"
+            , text <| Utils.formatSingleDigit <| Time.toMinute zone ct
+            ]
+        ]
+
+
+viewMedia : Player -> Element Msg
+viewMedia player =
+    column [ width fill, height fill ]
+        [ viewSearchBar player
+        , viewTracks player
+        , viewPlayerToolbar player
+        ]
+
+
+viewSearchBar : Player -> Element Msg
+viewSearchBar player =
+    let
+        lsLength =
+            List.length player.tracksList
+
+        placeholderTxt =
+            if lsLength > 2 then
+                " Rechercher parmi " ++ String.fromInt lsLength ++ " morceaux"
 
             else
-                String.fromInt num
+                " Rechercher"
     in
-    div []
-        [ div []
-            [ a [ href "/media", style "margin-right" "10px" ] [ text "Audio" ]
-            , a [ href "/settings" ] [ text "Réglages" ]
-            ]
-        , div []
-            [ text <| format <| Time.toHour zone ct
-            , text ":"
-            , text <| format <| Time.toMinute zone ct
-            ]
-        , currentPage
+    row []
+        [ Input.text [ Border.width 0, Background.color <| rgba 0 0 0 0 ]
+            { onChange = Search
+            , text = player.search
+            , placeholder = Just <| Input.placeholder [ Font.italic, Font.color whiteColor ] <| row [] [ icon [] "search", text placeholderTxt ]
+            , label = Input.labelHidden "Rechercher"
+            }
+        , if player.search == "" then
+            none
+
+          else
+            Input.button [] { onPress = Just ClearSearch, label = icon [] "close" }
         ]
 
 
-viewMedia : Player -> Html Msg
-viewMedia player =
-    div []
-        [ input [ type_ "text", placeholder "Rechercher", onInput Search, value player.search ] []
-        , button [ onClick ClearSearch ] [ text "Effacer" ]
-        , viewPlayerToolbar player
-        , HK.ul []
-            (List.map (viewTrack player.status) <| getTheFilteredList player.search player.tracksList)
-        ]
+viewTracks : Player -> Element Msg
+viewTracks player =
+    let
+        filteredList =
+            getTheFilteredList player.search player.tracksList
+
+        list =
+            if player.tracksList == [] then
+                [ ( "", el [ centerX, centerY ] <| text "Rien de rien" ) ]
+
+            else if filteredList == [] then
+                [ ( "", el [ centerX, centerY ] <| text "Rien ne correspond à cette recherche" ) ]
+
+            else
+                List.map (viewTrack player.status) filteredList
+    in
+    EK.column [ scrollbarY, clipX, height <| px 300, width <| px 729, htmlAttribute <| HA.id "tracksList" ] list
 
 
-viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Html Msg )
+viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
 viewTrack ps ( num, tr ) =
     let
         currentTrack =
@@ -77,43 +179,50 @@ viewTrack ps ( num, tr ) =
                 |> Maybe.andThen parsePath
                 |> Maybe.withDefault ""
                 |> (==) tr.relativePath
+
+        bkgndColor =
+            if modBy 2 num == 0 then
+                "#f7f7f7"
+
+            else
+                "#ffffff"
     in
     ( String.fromInt num
-    , li
-        [ style "cursor" "pointer"
-        , onClick <| SetTrack tr
-        , if currentTrack then
-            style "color" "green"
+    , row
+        ([ htmlAttribute <| HA.style "cursor" "pointer"
+         , onClick <| SetTrack tr
+         , htmlAttribute <| HA.id <| (++) "track-" <| String.fromInt num
+         , padding 10
+         , width fill
+         , clipX
 
-          else
-            class ""
-        ]
+         --         , htmlAttribute <| HA.style "background-color" bkgndColor
+         ]
+            ++ (if currentTrack then
+                    [ htmlAttribute <| HA.style "color" "green" ]
+
+                else
+                    []
+               )
+        )
         [ text tr.filename ]
     )
 
 
-viewPlayerToolbar : Player -> Html Msg
+viewPlayerToolbar : Player -> Element Msg
 viewPlayerToolbar player =
     let
         status =
-            case getCurrentTrack player.status of
-                Just tr ->
-                    tr
-                        |> parsePath
-                        |> Maybe.withDefault ""
-                        |> getTrackInfo player.tracksList
-                        |> displayCurrentTrack
-
-                Nothing ->
-                    text ""
+            getTrackInfoFromStatus player
+                |> displayCurrentTrack
 
         ( buttonMsg, buttonTxt ) =
             case player.status of
                 Playing tr ->
-                    ( Pause, "Pause" )
+                    ( Pause, "pause-circle-outline" )
 
                 _ ->
-                    ( Play, "Lire" )
+                    ( Play, "play-circle-outline" )
 
         disableOnError =
             case player.status of
@@ -123,42 +232,108 @@ viewPlayerToolbar player =
                 _ ->
                     False
 
-        ( shuffleMsg, shuffleTxt ) =
+        ( shuffleMsg, shuffleColor ) =
             if player.shuffle == Disabled then
-                ( True, "Activer le mode aléatoire" )
+                ( True, Font.color whiteColor )
 
             else
-                ( False, "Désactiver le mode aléatoire" )
-    in
-    div []
-        [ button [ onClick Previous, disabled disableOnError ] [ text "Prev" ]
-        , button [ onClick buttonMsg, disabled disableOnError ] [ text buttonTxt ]
-        , button [ onClick Next, disabled disableOnError ] [ text "Suiv" ]
-        , button [ onClick <| ToggleLoop <| not player.loop, disabled disableOnError, style "margin-left" "10px" ]
-            [ if player.loop then
-                text "Désactiver la répétition"
+                ( False, Font.color greenColor )
 
-              else
-                text "Activer la répétition"
+        playerBtn ftsize msg label =
+            Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size ftsize, paddingXY 10 0, centerY ] { onPress = Just msg, label = label }
+    in
+    row [ width fill, height <| px 100, paddingXY 10 0, spacing 10 ]
+        [ row [ spacing 5 ]
+            [ playerBtn 30 Previous <| icon [] "skip-previous"
+            , playerBtn 40 buttonMsg <| icon [] buttonTxt
+            , playerBtn 30 Next <| icon [] "skip-next"
+            , playerBtn 30
+                (ToggleLoop <| not player.loop)
+                (el
+                    [ if player.loop then
+                        Font.color greenColor
+
+                      else
+                        Font.color whiteColor
+                    ]
+                 <|
+                    icon [] "repeat"
+                )
+            , playerBtn 30 (ToggleShuffle shuffleMsg) <| el [ shuffleColor ] <| icon [] "shuffle"
             ]
-        , button [ onClick <| ToggleShuffle shuffleMsg, disabled disableOnError ]
-            [ text shuffleTxt
-            ]
-        , text <| String.fromInt <| List.length player.tracksList
         , status
         ]
 
 
-displayCurrentTrack : TrackInfo -> Html Msg
+displayCurrentTrack : TrackInfo -> Element Msg
 displayCurrentTrack tri =
-    div []
-        [ p [] [ text <| Maybe.withDefault tri.filename tri.title ]
-        , p [] [ text <| Maybe.withDefault "" tri.artist ]
-        , p [] [ text <| Maybe.withDefault "" tri.album ]
-        , case tri.picture of
-            Just pic ->
-                img [ src pic ] []
+    let
+        cutWords s =
+            if String.length s > 35 then
+                String.left 35 s ++ "..."
 
-            Nothing ->
-                text ""
+            else
+                s
+    in
+    row [ width fill, spacing 5 ]
+        [ column []
+            [ row [ Font.bold ] [ text <| cutWords <| Maybe.withDefault tri.filename tri.title ]
+            , row [] [ text <| cutWords <| Maybe.withDefault "" tri.artist ]
+            , row [ Font.italic ] [ text <| cutWords <| Maybe.withDefault "" tri.album ]
+            ]
+        , row
+            [ alignRight ]
+            [ case tri.picture of
+                Just pic ->
+                    image [ height <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
+
+                Nothing ->
+                    none
+            ]
         ]
+
+
+displayFullScreenArtwork : msg -> String -> Element msg
+displayFullScreenArtwork closeMsg pic =
+    el
+        [ width fill
+        , height fill
+        , behindContent <|
+            el
+                [ width fill
+                , height fill
+                , Background.color (rgba 0 0 0 0.7)
+                , onClick closeMsg
+                ]
+                none
+        , inFront <|
+            el
+                [ htmlAttribute <| HA.style "height" "100%"
+                , htmlAttribute <| HA.style "width" "100%"
+                , htmlAttribute <| HA.style "pointer-events" "none"
+                , htmlAttribute <| HA.style "position" "fixed"
+                , onClick closeMsg
+                ]
+            <|
+                el
+                    [ centerX
+                    , centerY
+                    , htmlAttribute <| HA.style "pointer-events" "all"
+                    , htmlAttribute <| HA.style "max-height" "90%"
+                    , htmlAttribute <| HA.style "width" "min-content"
+                    , scrollbarY
+                    ]
+                <|
+                    image [ width <| maximum 420 <| px 400 ] { src = pic, description = "Pochette d'album" }
+        ]
+    <|
+        none
+
+
+getTrackInfoFromStatus : Player -> TrackInfo
+getTrackInfoFromStatus player =
+    player.status
+        |> getCurrentTrack
+        |> Maybe.andThen parsePath
+        |> Maybe.withDefault ""
+        |> getTrackInfo player.tracksList

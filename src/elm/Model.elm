@@ -1,4 +1,4 @@
-module Model exposing (Base64, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, initialModel, parsePath, trackDecoder, urlToRoute)
+module Model exposing (Clock, Model, Player, PlayerStatus(..), PlayerStatusEvent, PlayingPath, Randomness(..), Route(..), Routing, TrackInfo, decodePlayerEvent, getTrackInfo, initTrackInfo, parsePath, routeToUrlString, trackDecoder, urlToRoute)
 
 import Browser.Navigation as Nav exposing (Key)
 import Json.Decode as D exposing (succeed)
@@ -11,6 +11,7 @@ type alias Model =
     { clock : Clock
     , routing : Routing
     , player : Player
+    , windowHeight : Int
     }
 
 
@@ -20,6 +21,7 @@ type alias Player =
     , loop : Bool
     , shuffle : Randomness
     , search : String
+    , fullscreenArtwork : Maybe String
     }
 
 
@@ -32,6 +34,9 @@ type alias Routing =
 type Route
     = Media
     | Settings
+    | Radio
+    | Navigation
+    | RearCam
     | NotFound
 
 
@@ -107,7 +112,7 @@ type alias TrackInfo =
     , title : Maybe String
     , artist : Maybe String
     , album : Maybe String
-    , picture : Maybe Base64
+    , picture : Maybe String
     }
 
 
@@ -122,10 +127,6 @@ initTrackInfo =
     }
 
 
-type alias Base64 =
-    String
-
-
 trackDecoder : D.Decoder TrackInfo
 trackDecoder =
     D.succeed TrackInfo
@@ -137,23 +138,6 @@ trackDecoder =
         |> optional "picture" (D.nullable D.string) Nothing
 
 
-initialModel : Url.Url -> Nav.Key -> Model
-initialModel url key =
-    { clock = Clock Time.utc (Time.millisToPosix 0)
-    , routing =
-        { key = key
-        , currentPage = urlToRoute url
-        }
-    , player =
-        { tracksList = []
-        , status = Empty
-        , loop = False
-        , shuffle = Disabled
-        , search = ""
-        }
-    }
-
-
 getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo
 getTrackInfo ls tr =
     ls
@@ -161,6 +145,8 @@ getTrackInfo ls tr =
         |> List.filter (\el -> el.relativePath == tr)
         |> List.head
         |> Maybe.withDefault initTrackInfo
+
+
 
 
 parsePath : String -> Maybe String
@@ -195,5 +181,36 @@ urlToRoute url =
         "settings" ->
             Settings
 
+        "radio" ->
+            Radio
+
+        "navigation" ->
+            Navigation
+
+        "rearCam" ->
+            RearCam
+
         _ ->
             NotFound
+
+
+routeToUrlString : Route -> String
+routeToUrlString r =
+    case r of
+        Media ->
+            "/media"
+
+        Radio ->
+            "/radio"
+
+        Navigation ->
+            "/navigation"
+
+        RearCam ->
+            "/rearCam"
+
+        Settings ->
+            "/settings"
+
+        NotFound ->
+            "/notFound"
