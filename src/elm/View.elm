@@ -2,7 +2,7 @@ module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
 import Browser.Dom as Dom
-import Element exposing (Element, FocusStyle, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, focusStyle, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
+import Element exposing (Element, FocusStyle, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, focusStyle, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, pointer, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -14,7 +14,7 @@ import Html.Attributes as HA
 import Model exposing (Clock, Model, Player, PlayerStatus(..), Randomness(..), Route(..), TrackInfo, getTrackInfo, parsePath, routeToUrlString)
 import Style exposing (..)
 import Time exposing (Month(..), Weekday(..))
-import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList)
+import Update exposing (Msg(..), getCurrentTrack, getTheFilteredList, getTrackInfoFromStatus, trackScrollId)
 import Utils
 
 
@@ -24,6 +24,7 @@ view model =
         playerStyle =
             model.player
                 |> getTrackInfoFromStatus
+                |> Tuple.second
                 |> .picture
                 |> Style.setPlayerPageStyle
     in
@@ -62,7 +63,7 @@ viewBody model =
                 { url = routeToUrlString route, label = icon [] ico }
     in
     row
-        ([ width fill, height fill, htmlAttribute <| HA.id "xxx" ]
+        ([ width fill, height fill, htmlAttribute <| HA.id "app" ]
             ++ (Maybe.withDefault [] <|
                     Maybe.map
                         (List.singleton
@@ -84,8 +85,7 @@ viewBody model =
         , column [ height fill, width <| fillPortion 92, Font.color whiteColor ]
             [ viewStatusBar model.clock
             , column [ width fill, height <| fillPortion 95 ]
-                [ currentPage
-                ]
+                [ currentPage ]
             ]
         ]
 
@@ -191,7 +191,7 @@ viewTrack ps ( num, tr ) =
     , row
         ([ htmlAttribute <| HA.style "cursor" "pointer"
          , onClick <| SetTrack tr
-         , htmlAttribute <| HA.id <| (++) "track-" <| String.fromInt num
+         , htmlAttribute <| HA.id <| (++) trackScrollId <| String.fromInt num
          , padding 10
          , width fill
          , clipX
@@ -265,8 +265,8 @@ viewPlayerToolbar player =
         ]
 
 
-displayCurrentTrack : TrackInfo -> Element Msg
-displayCurrentTrack tri =
+displayCurrentTrack : ( Int, TrackInfo ) -> Element Msg
+displayCurrentTrack ( index, tri ) =
     let
         cutWords s =
             if String.length s > 35 then
@@ -276,7 +276,7 @@ displayCurrentTrack tri =
                 s
     in
     row [ width fill, spacing 5 ]
-        [ column []
+        [ column [ pointer, onClick <| ScrollToTrack <| (++) trackScrollId <| String.fromInt index ]
             [ row [ Font.bold ] [ text <| cutWords <| Maybe.withDefault tri.filename tri.title ]
             , row [] [ text <| cutWords <| Maybe.withDefault "" tri.artist ]
             , row [ Font.italic ] [ text <| cutWords <| Maybe.withDefault "" tri.album ]
@@ -328,12 +328,3 @@ displayFullScreenArtwork closeMsg pic =
         ]
     <|
         none
-
-
-getTrackInfoFromStatus : Player -> TrackInfo
-getTrackInfoFromStatus player =
-    player.status
-        |> getCurrentTrack
-        |> Maybe.andThen parsePath
-        |> Maybe.withDefault ""
-        |> getTrackInfo player.tracksList

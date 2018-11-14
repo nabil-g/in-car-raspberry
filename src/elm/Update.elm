@@ -1,4 +1,4 @@
-module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, update)
+module Update exposing (Msg(..), getAnotherTrack, getCurrentTrack, getTheFilteredList, getTheWorkingList, getTrackInfoFromStatus, setAnotherTrack, setTheFirstTrack, shuffleTracksList, subscriptions, trackScrollId, update)
 
 import Browser
 import Browser.Navigation as Nav exposing (load, pushUrl)
@@ -31,11 +31,15 @@ type Msg
     | ClearSearch
     | CloseArtwork
     | DisplayArtwork String
+    | ScrollToTrack String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ScrollToTrack s ->
+            ( model, Ports.scrollToTrack <| Debug.log "xx" s )
+
         DisplayArtwork s ->
             model.player
                 |> (\p -> { p | fullscreenArtwork = Just s })
@@ -134,7 +138,7 @@ update msg model =
                 ( { model | player = updatedPlayer }, Cmd.none )
 
         SetTrack tr ->
-            ( model, setTrack tr )
+            ( model, Cmd.batch [ setTrack tr ] )
 
         Pause ->
             ( model, Ports.pause () )
@@ -376,3 +380,17 @@ subscriptions m =
         , Time.every 60000 Tick
         , Ports.enhancedTrack GotAnEnhancedTrack
         ]
+
+
+getTrackInfoFromStatus : Player -> ( Int, TrackInfo )
+getTrackInfoFromStatus player =
+    player.status
+        |> getCurrentTrack
+        |> Maybe.andThen parsePath
+        |> Maybe.withDefault ""
+        |> Model.getTrackInfo player.tracksList
+
+
+trackScrollId : String
+trackScrollId =
+    "track-"

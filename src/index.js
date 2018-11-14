@@ -84,6 +84,12 @@ app.ports.getMetadata.subscribe(function (tr) {
     socket.emit('metadataRequest', JSON.stringify(tr));
 });
 
+app.ports.scrollToTrack.subscribe(function (s) {
+    console.log(s);
+    let tracksList = document.getElementById('tracksList');
+    tracksList.scrollTo(0,document.getElementById(s).scrollTop);
+});
+
 
 
 let myDebug = function (x) {

@@ -138,14 +138,12 @@ trackDecoder =
         |> optional "picture" (D.nullable D.string) Nothing
 
 
-getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> TrackInfo
+getTrackInfo : List ( Int, TrackInfo ) -> PlayingPath -> ( Int, TrackInfo )
 getTrackInfo ls tr =
     ls
-        |> List.map (\tup -> Tuple.second tup)
-        |> List.filter (\el -> el.relativePath == tr)
+        |> List.filter (\( index, el ) -> el.relativePath == tr)
         |> List.head
-        |> Maybe.withDefault initTrackInfo
-
+        |> Maybe.withDefault ( 0, initTrackInfo )
 
 
 

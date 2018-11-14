@@ -40,4 +40,4 @@ setPlayerPageStyle s =
                 Nothing ->
                     ( "", 1 )
     in
-    H.node "style" [] [ H.text ("#xxx{transition:all 2s ease;background-color:rgba(0,0,0," ++ String.fromFloat color ++ ");}#xxx:before{content: '';background: url(" ++ pic ++ ") no-repeat fixed;background-size: cover;-webkit-filter: blur(30px);filter: blur(30px);position: absolute;top:0;bottom: 0;left: 0;right: 0;z-index: -1;}") ]
+    H.node "style" [] [ H.text ("#app{transition:all 2s ease;background-color:rgba(0,0,0," ++ String.fromFloat color ++ ");}#xxx:before{content: '';background: url(" ++ pic ++ ") no-repeat fixed;background-size: cover;-webkit-filter: blur(30px);filter: blur(30px);position: absolute;top:0;bottom: 0;left: 0;right: 0;z-index: -1;}") ]
