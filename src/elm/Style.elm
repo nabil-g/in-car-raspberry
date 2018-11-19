@@ -1,4 +1,4 @@
-module Style exposing (blackColor, blueColor, greenColor, redColor, setPlayerPageStyle, whiteColor)
+module Style exposing (blackColor, blueColor, greenColor, greyColor, redColor, setPlayerPageStyle, whiteColor)
 
 import Element exposing (Color, rgb)
 import Html as H
@@ -27,6 +27,11 @@ greenColor =
 blueColor : Color
 blueColor =
     rgb 0 0 255
+
+
+greyColor : Color
+greyColor =
+    Element.rgb255 144 144 144
 
 
 setPlayerPageStyle : Maybe String -> H.Html msg

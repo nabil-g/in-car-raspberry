@@ -2,7 +2,7 @@ module View exposing (displayCurrentTrack, view, viewPlayerToolbar, viewTrack)
 
 import Browser exposing (Document)
 import Browser.Dom as Dom
-import Element exposing (Element, FocusStyle, Length, alignBottom, alignLeft, alignRight, alignTop, behindContent, centerX, centerY, clip, clipX, clipY, column, el, fill, fillPortion, focusStyle, height, html, htmlAttribute, image, inFront, layout, link, maximum, minimum, none, padding, paddingEach, paddingXY, paragraph, px, rgba, row, scrollbarY, shrink, spaceEvenly, spacing, spacingXY, text, width)
+import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -20,15 +20,8 @@ import Utils
 
 view : Model -> Document Msg
 view model =
-    let
-        playerStyle =
-            model.player
-                |> getTrackInfoFromStatus
-                |> .picture
-                |> Style.setPlayerPageStyle
-    in
     { title = "InCarRaspberry"
-    , body = [ Element.layoutWith { options = [ focusStyle <| FocusStyle Nothing Nothing Nothing ] } [ Font.size 18, height <| px model.windowHeight ] <| viewBody model, playerStyle ]
+    , body = [ Element.layout [ Font.size 18, height fill, Background.color <| rgb255 112 135 240, Font.color whiteColor ] <| viewBody model ]
     }
 
 
@@ -48,12 +41,37 @@ viewBody model =
 
                 _ ->
                     text "Pas encore dispo ..."
+    in
+    row
+        ([ width fill, height fill ]
+            ++ artwork model.player.fullscreenArtwork
+        )
+        [ viewSideNavbar model
+        , column [ width fill, height fill ]
+            [ viewStatusBar model.clock
+            , currentPage
+            ]
+        ]
 
+
+artwork : Maybe String -> List (Attribute Msg)
+artwork fsArtwork =
+    case fsArtwork of
+        Just pic ->
+            [ inFront <| displayFullScreenArtwork CloseArtwork pic ]
+
+        Nothing ->
+            []
+
+
+viewSideNavbar : Model -> Element Msg
+viewSideNavbar model =
+    let
         navLink route ico =
             link
                 ([ padding 25, Font.size 25, centerX ]
                     ++ (if route == model.routing.currentPage then
-                            [ Font.color whiteColor ]
+                            []
 
                         else
                             [ Font.color <| rgba 255 255 255 0.4 ]
@@ -61,31 +79,13 @@ viewBody model =
                 )
                 { url = routeToUrlString route, label = icon [] ico }
     in
-    row
-        ([ width fill, height fill, htmlAttribute <| HA.id "xxx" ]
-            ++ (Maybe.withDefault [] <|
-                    Maybe.map
-                        (List.singleton
-                            << inFront
-                            << displayFullScreenArtwork CloseArtwork
-                        )
-                        model.player.fullscreenArtwork
-               )
-        )
-        [ column [ height fill, width <| fillPortion 8, Background.color <| rgba 0 0 0 0.2 ]
-            [ column [ width fill, centerY ]
-                [ navLink Media "audio"
-                , navLink Radio "radio"
-                , navLink Navigation "navigation"
-                , navLink RearCam "videocam"
-                , navLink Settings "settings"
-                ]
-            ]
-        , column [ height fill, width <| fillPortion 92, Font.color whiteColor ]
-            [ viewStatusBar model.clock
-            , column [ width fill, height <| fillPortion 95 ]
-                [ currentPage
-                ]
+    column [ height fill, Background.color <| rgba 0 0 0 0.2, padding 20 ]
+        [ column [ width fill, centerY ]
+            [ navLink Media "audio"
+            , navLink Radio "radio"
+            , navLink Navigation "navigation"
+            , navLink RearCam "videocam"
+            , navLink Settings "settings"
             ]
         ]
 
@@ -104,23 +104,22 @@ viewStatusBar clock =
         ct =
             clock.currentTime
     in
-    row [ width fill, height <| fillPortion 5 ]
-        [ row [ alignRight ]
+    el [ width fill ] <|
+        row [ alignRight, paddingXY 10 5 ]
             [ text <| Utils.dateToFrench zone ct
             , text " "
             , text <| Utils.formatSingleDigit <| Time.toHour zone ct
             , text ":"
             , text <| Utils.formatSingleDigit <| Time.toMinute zone ct
             ]
-        ]
 
 
 viewMedia : Player -> Element Msg
 viewMedia player =
-    column [ width fill, height fill ]
+    column [ width fill, height fill, padding 5 ]
         [ viewSearchBar player
-        , viewTracks player
         , viewPlayerToolbar player
+        , viewTracks player
         ]
 
 
@@ -137,8 +136,8 @@ viewSearchBar player =
             else
                 " Rechercher"
     in
-    row []
-        [ Input.text [ Border.width 0, Background.color <| rgba 0 0 0 0 ]
+    row [ spacing 10 ]
+        [ Input.text [ Border.width 0, Background.color <| rgba 0 0 0 0, width <| px 300 ]
             { onChange = Search
             , text = player.search
             , placeholder = Just <| Input.placeholder [ Font.italic, Font.color whiteColor ] <| row [] [ icon [] "search", text placeholderTxt ]
@@ -168,7 +167,7 @@ viewTracks player =
             else
                 List.map (viewTrack player.status) filteredList
     in
-    EK.column [ scrollbarY, clipX, height <| px 300, width <| px 729, htmlAttribute <| HA.id "tracksList" ] list
+    EK.column [ clipY, scrollbarY, height <| maximum 500 fill, htmlAttribute <| HA.id "tracksList" ] list
 
 
 viewTrack : PlayerStatus -> ( Int, TrackInfo ) -> ( String, Element Msg )
@@ -180,42 +179,34 @@ viewTrack ps ( num, tr ) =
                 |> Maybe.withDefault ""
                 |> (==) tr.relativePath
 
-        bkgndColor =
-            if modBy 2 num == 0 then
-                "#f7f7f7"
+        cutWords s =
+            if String.length s > 55 then
+                String.left 55 s ++ "..."
 
             else
-                "#ffffff"
+                s
     in
     ( String.fromInt num
     , row
-        ([ htmlAttribute <| HA.style "cursor" "pointer"
+        ([ pointer
          , onClick <| SetTrack tr
-         , htmlAttribute <| HA.id <| (++) "track-" <| String.fromInt num
          , padding 10
-         , width fill
          , clipX
-
-         --         , htmlAttribute <| HA.style "background-color" bkgndColor
          ]
             ++ (if currentTrack then
-                    [ htmlAttribute <| HA.style "color" "green" ]
+                    [ Font.color greenColor ]
 
                 else
                     []
                )
         )
-        [ text tr.filename ]
+        [ text <| cutWords tr.filename ]
     )
 
 
 viewPlayerToolbar : Player -> Element Msg
 viewPlayerToolbar player =
     let
-        status =
-            getTrackInfoFromStatus player
-                |> displayCurrentTrack
-
         ( buttonMsg, buttonTxt ) =
             case player.status of
                 Playing tr ->
@@ -223,14 +214,6 @@ viewPlayerToolbar player =
 
                 _ ->
                     ( Play, "play-circle-outline" )
-
-        disableOnError =
-            case player.status of
-                Error _ ->
-                    True
-
-                _ ->
-                    False
 
         ( shuffleMsg, shuffleColor ) =
             if player.shuffle == Disabled then
@@ -240,7 +223,7 @@ viewPlayerToolbar player =
                 ( False, Font.color greenColor )
 
         playerBtn ftsize msg label =
-            Input.button [ htmlAttribute <| HA.disabled disableOnError, Font.size ftsize, paddingXY 10 0, centerY ] { onPress = Just msg, label = label }
+            Input.button [ Font.size ftsize, paddingXY 10 0, centerY ] { onPress = Just msg, label = label }
     in
     row [ width fill, height <| px 100, paddingXY 10 0, spacing 10 ]
         [ row [ spacing 5 ]
@@ -261,7 +244,8 @@ viewPlayerToolbar player =
                 )
             , playerBtn 30 (ToggleShuffle shuffleMsg) <| el [ shuffleColor ] <| icon [] "shuffle"
             ]
-        , status
+        , getTrackInfoFromStatus player
+            |> displayCurrentTrack
         ]
 
 
@@ -277,19 +261,16 @@ displayCurrentTrack tri =
     in
     row [ width fill, spacing 5 ]
         [ column []
-            [ row [ Font.bold ] [ text <| cutWords <| Maybe.withDefault tri.filename tri.title ]
-            , row [] [ text <| cutWords <| Maybe.withDefault "" tri.artist ]
-            , row [ Font.italic ] [ text <| cutWords <| Maybe.withDefault "" tri.album ]
+            [ el [ Font.bold ] <| text <| cutWords <| Maybe.withDefault tri.filename tri.title
+            , text <| cutWords <| Maybe.withDefault "" tri.artist
+            , el [ Font.italic ] <| text <| cutWords <| Maybe.withDefault "" tri.album
             ]
-        , row
-            [ alignRight ]
-            [ case tri.picture of
-                Just pic ->
-                    image [ height <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
+        , case tri.picture of
+            Just pic ->
+                el [ alignRight ] <| image [ height <| px 100, onClick <| DisplayArtwork pic ] { src = pic, description = "Pochette d'album" }
 
-                Nothing ->
-                    none
-            ]
+            Nothing ->
+                none
         ]
 
 
@@ -310,19 +291,11 @@ displayFullScreenArtwork closeMsg pic =
             el
                 [ htmlAttribute <| HA.style "height" "100%"
                 , htmlAttribute <| HA.style "width" "100%"
-                , htmlAttribute <| HA.style "pointer-events" "none"
-                , htmlAttribute <| HA.style "position" "fixed"
                 , onClick closeMsg
                 ]
             <|
                 el
-                    [ centerX
-                    , centerY
-                    , htmlAttribute <| HA.style "pointer-events" "all"
-                    , htmlAttribute <| HA.style "max-height" "90%"
-                    , htmlAttribute <| HA.style "width" "min-content"
-                    , scrollbarY
-                    ]
+                    [ centerX, centerY ]
                 <|
                     image [ width <| maximum 420 <| px 400 ] { src = pic, description = "Pochette d'album" }
         ]
