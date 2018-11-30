@@ -18,7 +18,7 @@ let index = isDev ? fs.readFileSync('static/indexDev.html') : fs.readFileSync('s
 app.use(express.static(musicDir));
 
 app.use(express.static('artworks'));
-app.use(express.static('dist'));
+app.use(express.static('../dist'));
 app.use(express.static('static'));
 
 
